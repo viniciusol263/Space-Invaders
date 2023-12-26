@@ -1,0 +1,24 @@
+project(SPACE_INVADER)
+
+cmake_minimum_required(VERSION 3.22)
+
+set(CMAKE_CXX_STANDARD 20)
+
+set(${PROJECT_NAME}_SRC 
+    components/GameThread/GameThread.cpp
+    components/LogicFunctions/LogicFunctions.cpp)
+
+add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SRC})
+
+target_include_directories(${PROJECT_NAME} PUBLIC 
+                            ${CMAKE_CURRENT_SOURCE_DIR}/components
+                            ${CMAKE_CURRENT_SOURCE_DIR}/utils
+                            ${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/include)
+
+target_link_directories(${PROJECT_NAME} PUBLIC
+                        ${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/lib)
+
+target_link_libraries(${PROJECT_NAME} sfml-main sfml-system sfml-window sfml-graphics)
+
+file(GLOB SFML_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/bin/*.dll")
+file(COPY ${SFML_DLLS} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
