@@ -44,13 +44,13 @@ namespace GameEngine
         for(auto& key : GameUtils::Keyboard_Keys)
             m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
 
-        m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/ship.png", 
+        m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1),
             std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1));
 
         for(auto index = 1; index <= 4; ++index)
         {
-            m_objects.emplace_back(std::to_string(index), GameUtils::ObjectType::ENEMY, "../resources/texture/enemy-ship.png",
+            m_objects.emplace_back(std::to_string(index), GameUtils::ObjectType::ENEMY, "../resources/texture/enemy-ship.png", "",
                 std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1),
                 std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1));
         }

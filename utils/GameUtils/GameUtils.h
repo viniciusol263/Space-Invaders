@@ -6,6 +6,7 @@
 
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
+#include "SFML/Audio.hpp"
 
 namespace GameUtils
 {
@@ -36,7 +37,7 @@ namespace GameUtils
     class Object 
     {
     public:
-        Object(std::string id = "UNKNOWN", ObjectType objType = ObjectType::PLAYER, std::string texturePath = "", std::function<void(GameUtils::Object&)> startupHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> logicHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> destructionHandler = [](GameUtils::Object&){}) : 
+        Object(std::string id = "UNKNOWN", ObjectType objType = ObjectType::PLAYER, std::string texturePath = "", std::string soundPath = "", std::function<void(GameUtils::Object&)> startupHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> logicHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> destructionHandler = [](GameUtils::Object&){}) : 
             m_id(id), m_objType(objType), m_startupHandler(startupHandler), m_logicHandler(logicHandler), m_destructionHandler(destructionHandler)
         {
             if(m_id != "UNKNOWN")
@@ -44,6 +45,11 @@ namespace GameUtils
                 m_objTexture = std::make_shared<sf::Texture>();
                 m_objTexture->loadFromFile(texturePath);
                 m_objSprite.setTexture(*m_objTexture);
+
+                m_objSoundBuffer = std::make_shared<sf::SoundBuffer>();
+                m_objSoundBuffer->loadFromFile(soundPath);
+                m_objSound.setBuffer(*m_objSoundBuffer);
+
                 m_startupHandler(*this);
             }
         }
@@ -64,6 +70,11 @@ namespace GameUtils
         return m_objSprite;
     }
 
+    sf::Sound& GetSound()
+    {
+        return m_objSound;
+    }
+
     ObjectType GetType() const
     {
         return m_objType;
@@ -82,6 +93,8 @@ namespace GameUtils
         std::function<void(GameUtils::Object&)> m_destructionHandler;
         std::shared_ptr<sf::Texture> m_objTexture;
         sf::Sprite m_objSprite;
+        std::shared_ptr<sf::SoundBuffer> m_objSoundBuffer;
+        sf::Sound m_objSound;
         
     };
 

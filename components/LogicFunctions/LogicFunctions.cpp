@@ -30,7 +30,7 @@ namespace GameEngine
         //Projectile instantiation
         if(projectile && std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){return obj.GetType() == GameUtils::ObjectType::PROJECTILE;}) == m_gameThread->GetObjects().end())
         {
-            m_gameThread->GetObjects().emplace_back("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png",
+            m_gameThread->GetObjects().emplace_back("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png", "../resources/sfx/player-shot.wav",
                 std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
                 std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1));
         }
@@ -63,6 +63,7 @@ namespace GameEngine
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         });
 
+        obj.GetSound().play();
         obj.GetSprite().setPosition(playerPosition->GetSprite().getPosition().x, playerPosition->GetSprite().getPosition().y - obj.GetSprite().getGlobalBounds().getSize().y);
     }
 
