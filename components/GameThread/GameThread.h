@@ -43,6 +43,9 @@ namespace GameEngine
         void CaptureKeyInput() override;
         void ExecuteLogic() override;
         void ClearScreen() override;
+
+        void CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder);
+
     };
 
     using GameThreadPtr = std::shared_ptr<GameThread>;

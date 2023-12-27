@@ -41,19 +41,28 @@ namespace GameEngine
 
     void GameThread::InitializeState()
     {
+
+        auto windowSize = m_window->getSize();
+
         for(auto& key : GameUtils::Keyboard_Keys)
             m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
 
+        //Putting Player ship on the rendering pipeline
         m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/ship.png", "",
-            std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1),
+            std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
             std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1));
 
-        for(auto index = 1; index <= 4; ++index)
-        {
-            m_objects.emplace_back(std::to_string(index), GameUtils::ObjectType::ENEMY, "../resources/texture/enemy-ship.png", "",
-                std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1),
-                std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1));
-        }
+
+        //Putting array of Enemy ships in the rendering pipeline
+        CreateArrayObject(4, 4, 
+            [this](sf::Vector2i vecPos, std::string id) 
+            {
+                return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/enemy-ship.png", "",
+                        std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1));
+            }
+        );
+
     }
 
     void GameThread::DrawSprites()
@@ -98,6 +107,22 @@ namespace GameEngine
         m_window->draw(backgroundSprite);
     }
 
+    void GameThread::CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder)
+    {
+        auto windowSize = m_window->getSize();
+        for(auto row = 0; row < rows; ++row)
+        {
+            for(auto column = 0; column < columns; ++column)
+            {     
+                m_objects.push_back(objectBuilder(sf::Vector2i{
+                    (int)(windowSize.x * (0.15 * (row + 1))),  // X
+                    (int)(windowSize.y * (0.1*(column + 1)))}, // Y
+                    std::to_string(row + column*columns))   
+                );
+            }
+        }
+    }
+
     void GameThread::GameWatcherThread()
     {
         while(m_window->isOpen())
@@ -115,4 +140,6 @@ namespace GameEngine
 
         }
     }
+
+
 }
