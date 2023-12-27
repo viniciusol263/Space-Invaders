@@ -27,6 +27,7 @@ namespace GameEngine
         //Projectile instantiation
         if(projectile && std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){return obj.GetType() == GameUtils::ObjectType::PROJECTILE;}) == m_gameThread->GetObjects().end())
         {
+            m_gameThread->DoSpriteAnimation(obj, sf::Vector2i{32, 0});
             m_gameThread->GetObjects().emplace_back("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png", "../resources/sfx/player-shot.wav",
                 std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
                 std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1));
@@ -58,7 +59,7 @@ namespace GameEngine
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         });
 
-        obj.GetSound().play();
+        m_gameThread->PlayAudioChannel(GameUtils::SoundName::PLAYER_SHOT); 
         obj.GetSprite().setPosition(playerPosition->GetSprite().getPosition().x, playerPosition->GetSprite().getPosition().y - obj.GetSprite().getGlobalBounds().getSize().y);
     }
 
@@ -85,6 +86,8 @@ namespace GameEngine
                 auto r = (int)enemyObjs[index].GetSprite().getGlobalBounds().getSize().x;
                 if(std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2)) 
                 {
+                    m_gameThread->DoSpriteAnimation(GetObjectReference(index), sf::Vector2i{32,0});
+                    m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_DEATH);
                     EraseObject(enemyObjs[index]);
                     EraseObject(obj);
                     return;
@@ -104,6 +107,11 @@ namespace GameEngine
                 m_vector.push_back(m_gameThread->GetObjects()[index]);
         }
         return m_vector;
+    }
+
+    GameUtils::Object& LogicFunctions::GetObjectReference(int index)
+    {
+        return m_gameThread->GetObjects().at(index);
     }
 
     void LogicFunctions::EraseObject(const GameUtils::Object& obj)

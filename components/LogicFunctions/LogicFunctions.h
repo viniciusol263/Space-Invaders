@@ -45,6 +45,7 @@ namespace GameEngine
         std::map<std::pair<GameUtils::ObjectType, int>, LogicAssist> m_logicAssists;
         
         std::vector<GameUtils::Object> GetAllObjectByType(const GameUtils::ObjectType& type);
+        GameUtils::Object& GetObjectReference(int index);
         void EraseObject(const GameUtils::Object& obj);
         
     };

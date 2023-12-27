@@ -1,6 +1,7 @@
 #include <thread>
 #include <iostream>
 #include <algorithm>
+#include <array>
 
 #include "GameThread.h"
 #include "SFML/Graphics.hpp"
@@ -44,22 +45,24 @@ namespace GameEngine
 
         auto windowSize = m_window->getSize();
 
+        GenerateSoundChannels();
+
         for(auto& key : GameUtils::Keyboard_Keys)
             m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
 
         //Putting Player ship on the rendering pipeline
-        m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/ship.png", "",
+        m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/animated-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
-            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1));
+            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 166ms);
 
 
         //Putting array of Enemy ships in the rendering pipeline
         CreateArrayObject(4, 4, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
-                return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/enemy-ship.png", "",
+                return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1));
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 83ms);
             }
         );
 
@@ -107,6 +110,36 @@ namespace GameEngine
         m_window->draw(backgroundSprite);
     }
 
+    void GameThread::GenerateSoundChannels()
+    {    
+        for(auto soundFile : GameUtils::soundFiles)
+        {
+            auto soundBuffer = std::make_shared<sf::SoundBuffer>();
+            soundBuffer->loadFromFile("../resources/sfx/" + soundFile);
+            m_generalSoundChannels[soundFile] = std::make_pair(soundBuffer,sf::Sound());
+            m_generalSoundChannels[soundFile].second.setBuffer(*m_generalSoundChannels[soundFile].first);
+        }
+    }
+
+    void GameThread::DoSpriteAnimation(GameUtils::Object& obj, sf::Vector2i newSpritePos)
+    {
+        if(m_auxThread != nullptr) m_auxThread->get();
+        m_auxThread = std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, newSpritePos]()
+        {
+            auto& objSprite = obj.GetSprite();
+            auto currentRenderRect = objSprite.getTextureRect();
+            auto startTime = std::chrono::steady_clock::now();
+            objSprite.setTextureRect(sf::IntRect{newSpritePos, currentRenderRect.getSize()});
+            while(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime) <= obj.GetAnimationFrametime());
+            objSprite.setTextureRect(currentRenderRect);
+        }));
+    }
+
+    void GameThread::PlayAudioChannel(GameUtils::SoundName soundName)
+    {
+        m_generalSoundChannels[GameUtils::SoundNameToString(soundName)].second.play();
+    }
+
     void GameThread::CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder)
     {
         auto windowSize = m_window->getSize();
@@ -115,7 +148,7 @@ namespace GameEngine
             for(auto column = 0; column < columns; ++column)
             {     
                 m_objects.push_back(objectBuilder(sf::Vector2i{
-                    (int)(windowSize.x * (0.15 * (row + 1))),  // X
+                    (int)(windowSize.x * (0.20 * (row + 1))),  // X
                     (int)(windowSize.y * (0.1*(column + 1)))}, // Y
                     std::to_string(row + column*columns))   
                 );
