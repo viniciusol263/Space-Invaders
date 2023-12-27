@@ -11,6 +11,8 @@
 
 namespace GameEngine
 {
+    constexpr std::pair textureSize{32,32};
+    
     class GameThread : public IGameThread
     {
     public:
@@ -22,7 +24,7 @@ namespace GameEngine
         std::vector<GameUtils::Object>& GetObjects() override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
         void PlayAudioChannel(GameUtils::SoundName soundName) override;
-        void DoSpriteAnimation(GameUtils::Object& obj, sf::Vector2i newSpritePos) override;
+        void DoAnimatedAction(GameUtils::Object& obj, std::vector<sf::Vector2i> newSpritePos, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
 
         void GameWatcherThread() override;
     private: 

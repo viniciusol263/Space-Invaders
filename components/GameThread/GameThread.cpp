@@ -62,7 +62,7 @@ namespace GameEngine
             {
                 return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 83ms);
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 166ms);
             }
         );
 
@@ -121,17 +121,26 @@ namespace GameEngine
         }
     }
 
-    void GameThread::DoSpriteAnimation(GameUtils::Object& obj, sf::Vector2i newSpritePos)
+    void GameThread::DoAnimatedAction(GameUtils::Object& obj, std::vector<sf::Vector2i> newSpritePos, bool isLoop, std::function<void()> actionFunc)
     {
         if(m_auxThread != nullptr) m_auxThread->get();
-        m_auxThread = std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, newSpritePos]()
+        m_auxThread = std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, newSpritePos, isLoop, actionFunc]()
         {
             auto& objSprite = obj.GetSprite();
             auto currentRenderRect = objSprite.getTextureRect();
-            auto startTime = std::chrono::steady_clock::now();
-            objSprite.setTextureRect(sf::IntRect{newSpritePos, currentRenderRect.getSize()});
-            while(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime) <= obj.GetAnimationFrametime());
-            objSprite.setTextureRect(currentRenderRect);
+            auto textureSize = objSprite.getTexture()->getSize();
+            auto renderRectSize = currentRenderRect.getSize();
+            auto frameQuantity = textureSize.x/renderRectSize.x;
+
+            for(auto index = 0; index < frameQuantity; ++index)
+            {
+                auto startTime = std::chrono::steady_clock::now();
+                objSprite.setTextureRect(sf::IntRect{sf::Vector2i{(int)(index * renderRectSize.x), 0}, currentRenderRect.getSize()});
+                while(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime) <= (obj.GetAnimationFrametime()/(int)frameQuantity));
+            }
+            if(isLoop)
+                objSprite.setTextureRect(currentRenderRect);
+            actionFunc();
         }));
     }
 
@@ -150,7 +159,7 @@ namespace GameEngine
                 m_objects.push_back(objectBuilder(sf::Vector2i{
                     (int)(windowSize.x * (0.20 * (row + 1))),  // X
                     (int)(windowSize.y * (0.1*(column + 1)))}, // Y
-                    std::to_string(row + column*columns))   
+                    std::to_string(row + column*rows))   
                 );
             }
         }
