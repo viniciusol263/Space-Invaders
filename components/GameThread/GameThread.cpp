@@ -110,6 +110,11 @@ namespace GameEngine
         m_window->draw(backgroundSprite);
     }
 
+    void GameThread::RespawnGame()
+    {
+        
+    }
+
     void GameThread::GenerateSoundChannels()
     {    
         for(auto soundFile : GameUtils::soundFiles)
@@ -121,10 +126,10 @@ namespace GameEngine
         }
     }
 
-    void GameThread::DoAnimatedAction(GameUtils::Object& obj, std::vector<sf::Vector2i> newSpritePos, bool isLoop, std::function<void()> actionFunc)
+    void GameThread::DoAnimatedAction(GameUtils::Object& obj, bool isLoop, std::function<void()> actionFunc)
     {
         if(m_auxThread != nullptr) m_auxThread->get();
-        m_auxThread = std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, newSpritePos, isLoop, actionFunc]()
+        m_auxThread = std::make_unique<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc]()
         {
             auto& objSprite = obj.GetSprite();
             auto currentRenderRect = objSprite.getTextureRect();
@@ -176,7 +181,7 @@ namespace GameEngine
                 CaptureKeyInput();
                 ExecuteLogic();
                 DrawSprites();
-                m_window->display();
+                m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
             }
 

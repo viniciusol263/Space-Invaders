@@ -10,6 +10,8 @@ namespace GameEngine
 {
     constexpr int AI_WALK_SPEED = 10;
 
+    constexpr auto projectileMapIndex = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
+
     struct LogicAssist
     {
         int persistent_value;
@@ -23,6 +25,7 @@ namespace GameEngine
         LogicFunctions(const std::shared_ptr<IGameThread>& gameThread) 
             : m_gameThread(std::move(gameThread))
         {
+            //Logic Assist for Enemies
            for(int index = 0; index <= 4*4; ++index)
            {
             auto number = std::make_pair(GameUtils::ObjectType::ENEMY, index);
@@ -31,6 +34,13 @@ namespace GameEngine
                 .counter = 0
             };
            }
+
+           //Logic Assist for Projectile
+           auto number = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
+           m_logicAssists[number] = LogicAssist{
+            .persistent_value = 0,
+            .counter = 0
+           };
         }
 
         void PlayerStartup(GameUtils::Object& obj, sf::Vector2i initialPos);

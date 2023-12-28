@@ -5,6 +5,7 @@
 #include <chrono>
 #include <vector>
 #include <utility>
+#include <mutex>
 
 #include "IGameThread.h"
 #include "LogicFunctions/LogicFunctions.h"
@@ -12,7 +13,7 @@
 namespace GameEngine
 {
     constexpr std::pair textureSize{32,32};
-    
+
     class GameThread : public IGameThread
     {
     public:
@@ -23,15 +24,17 @@ namespace GameEngine
         std::shared_ptr<sf::RenderWindow> GetRenderWindow() override;
         std::vector<GameUtils::Object>& GetObjects() override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
+
         void PlayAudioChannel(GameUtils::SoundName soundName) override;
-        void DoAnimatedAction(GameUtils::Object& obj, std::vector<sf::Vector2i> newSpritePos, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
+        void DoAnimatedAction(GameUtils::Object& obj, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
 
         void GameWatcherThread() override;
     private: 
         GameThread() = default;
+
         std::shared_ptr<sf::RenderWindow> m_window;
         std::shared_ptr<sf::Texture> backgroundTexture;
-        std::shared_ptr<std::future<void>> m_auxThread;
+        std::unique_ptr<std::future<void>> m_auxThread;
         std::unordered_map<std::string,std::pair<std::shared_ptr<sf::SoundBuffer>, sf::Sound>> m_generalSoundChannels;
         sf::Sprite backgroundSprite;
         
@@ -49,7 +52,8 @@ namespace GameEngine
         void CaptureKeyInput() override;
         void ExecuteLogic() override;
         void ClearScreen() override;
-        
+        void RespawnGame() override;
+
         void GenerateSoundChannels();
         void CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder);
 

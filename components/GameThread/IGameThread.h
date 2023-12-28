@@ -18,8 +18,9 @@ namespace GameEngine
         virtual std::shared_ptr<sf::RenderWindow> GetRenderWindow() = 0;
         virtual std::vector<GameUtils::Object>& GetObjects() = 0;
         virtual std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() = 0;
+
         virtual void PlayAudioChannel(GameUtils::SoundName soundName) = 0;
-        virtual void DoAnimatedAction(GameUtils::Object& obj, std::vector<sf::Vector2i> newSpritePos, bool isLoop = true, std::function<void()> actionFunc = [](){}) = 0;
+        virtual void DoAnimatedAction(GameUtils::Object& obj, bool isLoop = true, std::function<void()> actionFunc = [](){}) = 0;
 
         virtual void GameWatcherThread() = 0;
     private:
@@ -28,6 +29,7 @@ namespace GameEngine
         virtual void CaptureKeyInput() = 0;
         virtual void ExecuteLogic() = 0;
         virtual void ClearScreen() = 0;
+        virtual void RespawnGame() = 0;
 
 
     };
