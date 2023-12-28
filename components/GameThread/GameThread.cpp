@@ -151,6 +151,28 @@ namespace GameEngine
         }
     }
 
+    void GameThread::CleanupPointers()
+    {
+        if(m_auxThreads.size() == 20)
+        {
+            for(auto index = 0; index < m_auxThreads.size(); ++index)
+            {
+                if(m_auxThreads[index] != nullptr) 
+                {
+                    if(m_auxThreads[index]->valid())
+                        m_auxThreads[index]->get();
+                    std::remove_if(m_auxThreads.begin(), m_auxThreads.end(), [this, index](const std::shared_ptr<std::future<void>>& thread) 
+                    -> std::shared_ptr<std::future<void>>
+                    {
+                        if(thread.get() == m_auxThreads[index].get())
+                            return thread;
+                        return nullptr;
+                    });
+                }
+            }
+        }
+    }
+
     void GameThread::PauseLogic()
     {
         if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
@@ -185,8 +207,8 @@ namespace GameEngine
 
     void GameThread::DoAnimatedAction(GameUtils::Object& obj, bool isLoop, std::function<void()> actionFunc)
     {
-        if(m_auxThread != nullptr) m_auxThread->get();
-        m_auxThread = std::make_unique<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc]()
+
+        m_auxThreads.push_back(std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc]()
         {
             auto& objSprite = obj.GetSprite();
             auto currentRenderRect = objSprite.getTextureRect();
@@ -203,7 +225,7 @@ namespace GameEngine
             if(isLoop)
                 objSprite.setTextureRect(currentRenderRect);
             actionFunc();
-        }));
+        })));
     }
 
     void GameThread::PlayAudioChannel(GameUtils::SoundName soundName)
@@ -243,6 +265,7 @@ namespace GameEngine
                 }
                 DrawSprites();
                 RespawnGame();
+                CleanupPointers();
                 m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
             }

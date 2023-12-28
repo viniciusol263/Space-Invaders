@@ -30,12 +30,13 @@ namespace GameEngine
         virtual void GameWatcherThread() = 0;
     private:
         virtual void InitializeState() = 0;
-        virtual void DrawSprites() = 0;
         virtual void CaptureKeyInput() = 0;
+        virtual void PauseLogic() = 0;
         virtual void ExecuteLogic() = 0;
+        virtual void DrawSprites() = 0;
         virtual void ClearScreen() = 0;
         virtual void RespawnGame() = 0;
-        virtual void PauseLogic() = 0;
+        virtual void CleanupPointers() = 0;
 
 
     };

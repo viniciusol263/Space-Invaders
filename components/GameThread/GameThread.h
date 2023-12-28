@@ -37,7 +37,7 @@ namespace GameEngine
 
         std::shared_ptr<sf::RenderWindow> m_window;
         std::shared_ptr<sf::Texture> backgroundTexture;
-        std::unique_ptr<std::future<void>> m_auxThread;
+        std::vector<std::shared_ptr<std::future<void>>> m_auxThreads;
         std::unordered_map<std::string,std::pair<std::shared_ptr<sf::SoundBuffer>, sf::Sound>> m_generalSoundChannels;
         sf::Sprite backgroundSprite;
         sf::Font m_font;
@@ -54,12 +54,13 @@ namespace GameEngine
         std::chrono::time_point<std::chrono::steady_clock> m_lastFrameTime;
 
         void InitializeState() override;
-        void DrawSprites() override;
         void CaptureKeyInput() override;
+        void PauseLogic() override;
         void ExecuteLogic() override;
+        void DrawSprites() override;
         void ClearScreen() override;
         void RespawnGame() override;
-        void PauseLogic() override;
+        void CleanupPointers() override;
 
         void GenerateSoundChannels();
         void CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder);

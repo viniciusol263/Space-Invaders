@@ -29,9 +29,9 @@ namespace GameEngine
         {
             m_logicAssists[projectileMapIndex].counter = 1;
             m_gameThread->DoAnimatedAction(obj, true, [this](){
-                m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png", "../resources/sfx/player-shot.wav",
+                m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
                     std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
-                    std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1));
+                    std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1), 300ms);
             });
         }
     }
@@ -72,7 +72,10 @@ namespace GameEngine
         auto currentPosition = obj.GetSprite().getPosition();
 
         if(currentPosition.y >= 0)
-            obj.GetSprite().setPosition(currentPosition.x, currentPosition.y - 10);
+        {
+            if(m_logicAssists[projectileMapIndex].persistent_value == 0)
+                obj.GetSprite().setPosition(currentPosition.x, currentPosition.y - 10);
+        }
         else 
         {
             m_logicAssists[projectileMapIndex].counter = 0;
@@ -81,7 +84,7 @@ namespace GameEngine
         }
 
         auto enemyObjs = GetAllObjectByType(GameUtils::ObjectType::ENEMY);
-        if(enemyObjs.size() > 0)
+        if(enemyObjs.size() > 0 && m_logicAssists[projectileMapIndex].persistent_value == 0)
         {
             for(auto index = 0; index < enemyObjs.size(); ++index)
             {
@@ -91,13 +94,17 @@ namespace GameEngine
                 auto r = (int)enemyObjs[index].GetSprite().getGlobalBounds().getSize().x;
                 if(std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2)) 
                 {
-                    m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), false, [this, enemyObjs, index, obj](){
+                    m_logicAssists[projectileMapIndex].persistent_value = 1;
+                    m_gameThread->DoAnimatedAction(GetObjectReference(obj), false, [this, obj](){
+                        DestroyObject(GetObjectReference(obj));
+                        m_logicAssists[projectileMapIndex].persistent_value = 0;
+                    });
+                    m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), false, [this, enemyObjs, index](){
                         m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_DEATH);
                         DestroyObject(GetObjectReference(enemyObjs[index]));
                         m_logicAssists[projectileMapIndex].counter = 0;
                         m_gameThread->SetScore(++m_gameThread->GetScore());
                     });
-                    DestroyObject(GetObjectReference(obj));
                     return;
                 }   
             }
