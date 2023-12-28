@@ -14,6 +14,13 @@ using namespace std::chrono_literals;
 
 namespace GameUtils
 {
+    enum class TextType : int
+    {
+        SCORE = 0,
+        PAUSE,
+        GAME_OVER
+    }; 
+
     enum class ObjectType : int
     {
         PLAYER = 0,
@@ -32,10 +39,11 @@ namespace GameUtils
         }
     }
 
-    constexpr std::array<sf::Keyboard::Scancode,3> Keyboard_Keys = {
+    constexpr std::array<sf::Keyboard::Scancode,4> Keyboard_Keys = {
         sf::Keyboard::Scancode::A, 
         sf::Keyboard::Scancode::D, 
-        sf::Keyboard::Scancode::Space
+        sf::Keyboard::Scancode::Space,
+        sf::Keyboard::Scancode::P
     };
 
     constexpr std::array<std::string,3> soundFiles = {"enemy-death.wav", "enemy-shot.wav", "player-shot.wav"};

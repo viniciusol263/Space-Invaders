@@ -35,9 +35,27 @@ namespace GameEngine
         return m_objects;
     }
 
+    void GameThread::CreateObject(std::string id, GameUtils::ObjectType objType, 
+        std::string texturePath, std::string soundPath,
+        std::function<void(GameUtils::Object&)> startupHandler, std::function<void(GameUtils::Object&)> logicHandler, std::chrono::milliseconds animationFrametime)
+    {
+        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime);
+    }
+
     std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GameThread::GetKeys()
     {
         return m_keyMaps;
+    }
+
+    int& GameThread::GetScore()
+    {
+        return m_score;
+    }
+
+    void GameThread::SetScore(int score)
+    {
+        m_score = score;
+        m_textSprites[GameUtils::TextType::SCORE].setString("Score: " + std::to_string(m_score));
     }
 
     void GameThread::InitializeState()
@@ -45,13 +63,16 @@ namespace GameEngine
 
         auto windowSize = m_window->getSize();
 
+        m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
+        m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
+
         GenerateSoundChannels();
 
         for(auto& key : GameUtils::Keyboard_Keys)
             m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
 
         //Putting Player ship on the rendering pipeline
-        m_objects.emplace_back("0",GameUtils::ObjectType::PLAYER, "../resources/texture/animated-ship.png", "",
+        CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/animated-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
             std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 166ms);
 
@@ -62,7 +83,7 @@ namespace GameEngine
             {
                 return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 166ms);
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms);
             }
         );
 
@@ -72,6 +93,8 @@ namespace GameEngine
     {
         for(auto& sprite : m_objects)
             m_window->draw(sprite.GetSprite());
+        for(auto& [_, text] : m_textSprites)
+            m_window->draw(text);
     }
 
     void GameThread::CaptureKeyInput()
@@ -112,7 +135,41 @@ namespace GameEngine
 
     void GameThread::RespawnGame()
     {
-        
+        auto quantity = 0;
+        for(auto obj : m_objects)
+            if(obj.GetType() == GameUtils::ObjectType::ENEMY) ++quantity;
+        if(quantity == 0)
+        {
+            CreateArrayObject(4, 4, 
+                [this](sf::Vector2i vecPos, std::string id) 
+                {
+                    return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
+                            std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
+                            std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms);
+                }
+            );
+        }
+    }
+
+    void GameThread::PauseLogic()
+    {
+        if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        {
+            m_paused = (m_paused + 1) % 4;
+            m_textSprites.erase(GameUtils::TextType::PAUSE);
+        }
+        if((m_paused == 1 || m_paused == 3) && !m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        {
+            m_paused = (m_paused + 1) % 4;
+            if(m_paused == 2)
+            {
+                m_textSprites[GameUtils::TextType::PAUSE] = {"PAUSED", m_font, 60};
+                auto textSize = m_textSprites[GameUtils::TextType::PAUSE].getCharacterSize();
+                auto textLength = m_textSprites[GameUtils::TextType::PAUSE].getString().getSize();
+                m_textSprites[GameUtils::TextType::PAUSE].setFillColor(sf::Color::White);
+                m_textSprites[GameUtils::TextType::PAUSE].setPosition({(m_window->getDefaultView().getSize().x/2.0f) - (textLength/2)*textSize, (m_window->getDefaultView().getSize().y/2.0f) - textSize});
+            }    
+        }
     }
 
     void GameThread::GenerateSoundChannels()
@@ -179,8 +236,13 @@ namespace GameEngine
             {
                 ClearScreen();
                 CaptureKeyInput();
-                ExecuteLogic();
+                PauseLogic();
+                if(m_paused != 2)
+                {
+                    ExecuteLogic();
+                }
                 DrawSprites();
+                RespawnGame();
                 m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
             }

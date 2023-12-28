@@ -18,6 +18,8 @@ namespace GameEngine
         int counter;
     };
 
+    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {3, 0}}, {GameUtils::ObjectType::PROJECTILE, {0,0}}};
+
     class LogicFunctions 
     {
     public:

@@ -18,7 +18,7 @@ Checkpoints:
 
 - [ ] - Enemies shoots projectiles.
 
-- [ ] - Menu and Pause.
+- [X] - Menu and Pause.
 
-- [ ] - Point system and respawn.
+- [X] - Point system and respawn.
 

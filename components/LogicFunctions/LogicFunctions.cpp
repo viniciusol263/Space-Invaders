@@ -29,7 +29,7 @@ namespace GameEngine
         {
             m_logicAssists[projectileMapIndex].counter = 1;
             m_gameThread->DoAnimatedAction(obj, true, [this](){
-                m_gameThread->GetObjects().emplace_back("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png", "../resources/sfx/player-shot.wav",
+                m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/projectile.png", "../resources/sfx/player-shot.wav",
                     std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
                     std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1));
             });
@@ -37,13 +37,15 @@ namespace GameEngine
     }
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, sf::Vector2i initialPos)
     {
+        auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
+        m_logicAssists[enemyInstance] = DefaultAssists[GameUtils::ObjectType::ENEMY];
         obj.GetSprite().setPosition(initialPos.x, initialPos.y);
     }
 
     void LogicFunctions::EnemyLogic(GameUtils::Object& obj)
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
-
+        
         if(m_logicAssists[enemyInstance].counter++ == 30)
         {
             m_logicAssists[enemyInstance].persistent_value = -m_logicAssists[enemyInstance].persistent_value;
@@ -93,6 +95,7 @@ namespace GameEngine
                         m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_DEATH);
                         DestroyObject(GetObjectReference(enemyObjs[index]));
                         m_logicAssists[projectileMapIndex].counter = 0;
+                        m_gameThread->SetScore(++m_gameThread->GetScore());
                     });
                     DestroyObject(GetObjectReference(obj));
                     return;
