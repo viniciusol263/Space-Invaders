@@ -4,21 +4,22 @@
 #include <variant>
 #include <map>
 #include <utility>
+#include <mutex>
+
 #include "GameThread/IGameThread.h"
 
 namespace GameEngine
 {
-    constexpr int AI_WALK_SPEED = 10;
-
     constexpr auto projectileMapIndex = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
+    constexpr auto enemyProjectileMapIndex = std::make_pair(GameUtils::ObjectType::ENEMY_PROJECTILE, 0);
+
 
     struct LogicAssist
     {
-        int persistent_value;
-        int counter;
+        std::vector<int> auxVariables;
     };
 
-    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {3, 0}}, {GameUtils::ObjectType::PROJECTILE, {0,0}}};
+    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {{0, 3, 0}}}, {GameUtils::ObjectType::PROJECTILE, {{0,0}}}, {GameUtils::ObjectType::ENEMY_PROJECTILE, {{0,0,0}}}};
 
     class LogicFunctions 
     {
@@ -31,18 +32,14 @@ namespace GameEngine
            for(int index = 0; index <= 4*4; ++index)
            {
             auto number = std::make_pair(GameUtils::ObjectType::ENEMY, index);
-            m_logicAssists[number] = LogicAssist{
-                .persistent_value = 3,
-                .counter = 0
-            };
+            m_logicAssists[number] = DefaultAssists[GameUtils::ObjectType::ENEMY];
            }
 
            //Logic Assist for Projectile
-           auto number = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
-           m_logicAssists[number] = LogicAssist{
-            .persistent_value = 0,
-            .counter = 0
-           };
+           m_logicAssists[projectileMapIndex] = DefaultAssists[GameUtils::ObjectType::PROJECTILE];
+
+           //Logic Assist for Enemy Projectile
+           m_logicAssists[enemyProjectileMapIndex] = DefaultAssists[GameUtils::ObjectType::ENEMY_PROJECTILE];
         }
 
         void PlayerStartup(GameUtils::Object& obj, sf::Vector2i initialPos);
@@ -51,14 +48,16 @@ namespace GameEngine
         void EnemyLogic(GameUtils::Object& obj);
         void ProjectileSetup(GameUtils::Object& obj);
         void ProjectileLogic(GameUtils::Object& obj);
+        void EnemyProjectileSetup(GameUtils::Object& obj, sf::Vector2i initialPos, std::pair<GameUtils::ObjectType, int> assistId);
+        void EnemyProjectileLogic(GameUtils::Object& obj);
 
     private:
         std::shared_ptr<IGameThread> m_gameThread;
         std::map<std::pair<GameUtils::ObjectType, int>, LogicAssist> m_logicAssists;
-        
         std::vector<GameUtils::Object> GetAllObjectByType(const GameUtils::ObjectType& type);
         GameUtils::Object& GetObjectReference(GameUtils::Object obj);
         void DestroyObject(const GameUtils::Object& obj);
+        void ObjectCollison(GameUtils::Object& obj, GameUtils::ObjectType objType, std::pair<GameUtils::ObjectType, int> logicAssist, GameUtils::SoundName soundName, int textureRow = 0);
         
     };
 

@@ -18,14 +18,16 @@ namespace GameUtils
     {
         SCORE = 0,
         PAUSE,
-        GAME_OVER
+        GAME_OVER,
+        HIGH_SCORE
     }; 
 
     enum class ObjectType : int
     {
         PLAYER = 0,
         PROJECTILE,
-        ENEMY
+        ENEMY,
+        ENEMY_PROJECTILE
     };
 
     static std::string ObjectTypeToString(const ObjectType& type) 
@@ -35,6 +37,7 @@ namespace GameUtils
             case ObjectType::PLAYER: return "Player";
             case ObjectType::PROJECTILE: return "Projectile";
             case ObjectType::ENEMY: return "Enemy";
+            case ObjectType::ENEMY_PROJECTILE: return "Enemy Projectile";
             default: return "";
         }
     }
