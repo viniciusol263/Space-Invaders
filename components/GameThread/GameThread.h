@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 #include <mutex>
+#include <thread>
 
 #include "IGameThread.h"
 #include "LogicFunctions/LogicFunctions.h"
@@ -29,12 +30,13 @@ namespace GameEngine
         int& GetScore() override;
         void SetScore(int score) override;
         void PlayAudioChannel(GameUtils::SoundName soundName) override;
-        void DoAnimatedAction(GameUtils::Object& obj, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
+        void DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
 
         void GameWatcherThread() override;
     private: 
         GameThread() = default;
 
+        std::mutex m_mutex;
         std::shared_ptr<sf::RenderWindow> m_window;
         std::shared_ptr<sf::Texture> backgroundTexture;
         std::vector<std::shared_ptr<std::future<void>>> m_auxThreads;
@@ -64,6 +66,7 @@ namespace GameEngine
 
         void GenerateSoundChannels();
         void CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder);
+        void BlockingTextScreen(std::string text);
 
     };
 

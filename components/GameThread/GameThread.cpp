@@ -17,11 +17,6 @@ namespace GameEngine
         InitializeState();
         ClearScreen();
 
-        for(auto& obj : m_objects)
-            m_window->draw(obj.GetSprite());
-
-        m_window->display();
-
         m_lastFrameTime = std::chrono::steady_clock::now();
     }
 
@@ -72,13 +67,13 @@ namespace GameEngine
             m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
 
         //Putting Player ship on the rendering pipeline
-        CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/animated-ship.png", "",
+        CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/multi-anim-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
             std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 166ms);
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(4, 4, 
+        CreateArrayObject(2, 2, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
                 return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
@@ -118,6 +113,23 @@ namespace GameEngine
         }
     }
 
+    void GameThread::PauseLogic()
+    {
+        if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        {
+            m_paused = (m_paused + 1) % 4;
+            m_textSprites.erase(GameUtils::TextType::PAUSE);
+        }
+        if((m_paused == 1 || m_paused == 3) && !m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        {
+            m_paused = (m_paused + 1) % 4;
+            if(m_paused == 2)
+            {
+                BlockingTextScreen("PAUSED");
+            }    
+        }
+    }
+
     void GameThread::ExecuteLogic()
     {
         for(auto index = 0; index < m_objects.size(); ++index)
@@ -140,7 +152,7 @@ namespace GameEngine
             if(obj.GetType() == GameUtils::ObjectType::ENEMY) ++quantity;
         if(quantity == 0)
         {
-            CreateArrayObject(4, 4, 
+            CreateArrayObject(2, 2, 
                 [this](sf::Vector2i vecPos, std::string id) 
                 {
                     return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
@@ -173,26 +185,6 @@ namespace GameEngine
         }
     }
 
-    void GameThread::PauseLogic()
-    {
-        if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
-        {
-            m_paused = (m_paused + 1) % 4;
-            m_textSprites.erase(GameUtils::TextType::PAUSE);
-        }
-        if((m_paused == 1 || m_paused == 3) && !m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
-        {
-            m_paused = (m_paused + 1) % 4;
-            if(m_paused == 2)
-            {
-                m_textSprites[GameUtils::TextType::PAUSE] = {"PAUSED", m_font, 60};
-                auto textSize = m_textSprites[GameUtils::TextType::PAUSE].getCharacterSize();
-                auto textLength = m_textSprites[GameUtils::TextType::PAUSE].getString().getSize();
-                m_textSprites[GameUtils::TextType::PAUSE].setFillColor(sf::Color::White);
-                m_textSprites[GameUtils::TextType::PAUSE].setPosition({(m_window->getDefaultView().getSize().x/2.0f) - (textLength/2)*textSize, (m_window->getDefaultView().getSize().y/2.0f) - textSize});
-            }    
-        }
-    }
 
     void GameThread::GenerateSoundChannels()
     {    
@@ -205,11 +197,12 @@ namespace GameEngine
         }
     }
 
-    void GameThread::DoAnimatedAction(GameUtils::Object& obj, bool isLoop, std::function<void()> actionFunc)
+    void GameThread::DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop, std::function<void()> actionFunc)
     {
 
-        m_auxThreads.push_back(std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc]()
+        m_auxThreads.push_back(std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc, textureRow]()
         {
+            std::lock_guard lock(m_mutex);
             auto& objSprite = obj.GetSprite();
             auto currentRenderRect = objSprite.getTextureRect();
             auto textureSize = objSprite.getTexture()->getSize();
@@ -219,7 +212,7 @@ namespace GameEngine
             for(auto index = 0; index < frameQuantity; ++index)
             {
                 auto startTime = std::chrono::steady_clock::now();
-                objSprite.setTextureRect(sf::IntRect{sf::Vector2i{(int)(index * renderRectSize.x), 0}, currentRenderRect.getSize()});
+                objSprite.setTextureRect(sf::IntRect{sf::Vector2i{(int)(index * renderRectSize.x), textureRow * renderRectSize.y}, currentRenderRect.getSize()});
                 while(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime) <= (obj.GetAnimationFrametime()/(int)frameQuantity));
             }
             if(isLoop)
@@ -247,6 +240,15 @@ namespace GameEngine
                 );
             }
         }
+    }
+
+    void GameThread::BlockingTextScreen(std::string text)
+    {
+        m_textSprites[GameUtils::TextType::PAUSE] = {text, m_font, 60};
+        auto textSize = m_textSprites[GameUtils::TextType::PAUSE].getCharacterSize();
+        auto textLength = m_textSprites[GameUtils::TextType::PAUSE].getString().getSize();
+        m_textSprites[GameUtils::TextType::PAUSE].setFillColor(sf::Color::White);
+        m_textSprites[GameUtils::TextType::PAUSE].setPosition({(m_window->getDefaultView().getSize().x/2.0f) - (textLength/2)*textSize, (m_window->getDefaultView().getSize().y/2.0f) - textSize});
     }
 
     void GameThread::GameWatcherThread()

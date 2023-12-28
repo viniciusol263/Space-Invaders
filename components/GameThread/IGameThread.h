@@ -25,7 +25,7 @@ namespace GameEngine
         virtual int& GetScore() = 0;
         virtual void SetScore(int score) = 0;
         virtual void PlayAudioChannel(GameUtils::SoundName soundName) = 0;
-        virtual void DoAnimatedAction(GameUtils::Object& obj, bool isLoop = true, std::function<void()> actionFunc = [](){}) = 0;
+        virtual void DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop = true, std::function<void()> actionFunc = [](){}) = 0;
 
         virtual void GameWatcherThread() = 0;
     private:
