@@ -1,6 +1,6 @@
-##Simple Space Invaders game using C++20 and SFML.
+## Simple Space Invaders game using C++20 and SFML.
 
-###Checkpoints:
+### Checkpoints:
 
 - [X] - Basic Player sprite and movement.
 
@@ -23,13 +23,13 @@
 - [X] - Point system and respawn.
 
 
-###Controls:
+### Controls:
 
-```
-        W
-        |
-**A** - S - **D** **Space** **P**
-```
+
+>        W
+>        |
+> **A** - S - **D** **Space** **P**
+
 
 - Button **A** for moving the ship left.
 - Button **D** for moving the ship right.
