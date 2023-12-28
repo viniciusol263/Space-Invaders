@@ -10,11 +10,11 @@ Checkpoints:
 
 - [X] - Background.
 
-- [ ] - Animated sprites.
+- [X] - Animated sprites.
 
-- [ ] - Sound effects and Music.
+- [X] - Sound effects and Music.
 
-- [ ] - More rows of enemies.
+- [X] - More rows of enemies.
 
 - [ ] - Enemies shoots projectiles.
 
