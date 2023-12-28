@@ -16,7 +16,7 @@
 
 - [X] - More rows of enemies.
 
-- [ ] - Enemies shoots projectiles.
+- [X] - Enemies shoots projectiles.
 
 - [X] - Menu and Pause.
 

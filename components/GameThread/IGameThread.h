@@ -37,6 +37,7 @@ namespace GameEngine
         virtual void ClearScreen() = 0;
         virtual void RespawnGame() = 0;
         virtual void CleanupPointers() = 0;
+        virtual void CleanupGame() = 0;
 
 
     };

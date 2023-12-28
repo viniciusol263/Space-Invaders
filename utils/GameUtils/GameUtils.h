@@ -18,7 +18,8 @@ namespace GameUtils
     {
         SCORE = 0,
         PAUSE,
-        GAME_OVER
+        GAME_OVER,
+        HIGH_SCORE
     }; 
 
     enum class ObjectType : int

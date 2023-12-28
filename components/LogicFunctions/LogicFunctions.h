@@ -16,11 +16,10 @@ namespace GameEngine
 
     struct LogicAssist
     {
-        int persistent_value;
-        int counter;
+        std::vector<int> auxVariables;
     };
 
-    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {3, 0}}, {GameUtils::ObjectType::PROJECTILE, {0,0}}, {GameUtils::ObjectType::ENEMY_PROJECTILE, {0,0}}};
+    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {{0, 3, 0}}}, {GameUtils::ObjectType::PROJECTILE, {{0,0}}}, {GameUtils::ObjectType::ENEMY_PROJECTILE, {{0,0,0}}}};
 
     class LogicFunctions 
     {
@@ -37,12 +36,10 @@ namespace GameEngine
            }
 
            //Logic Assist for Projectile
-           auto number = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
-           m_logicAssists[number] = DefaultAssists[GameUtils::ObjectType::PROJECTILE];
+           m_logicAssists[projectileMapIndex] = DefaultAssists[GameUtils::ObjectType::PROJECTILE];
 
            //Logic Assist for Enemy Projectile
-           number = std::make_pair(GameUtils::ObjectType::ENEMY_PROJECTILE, 0);
-           m_logicAssists[number] = DefaultAssists[GameUtils::ObjectType::ENEMY_PROJECTILE];
+           m_logicAssists[enemyProjectileMapIndex] = DefaultAssists[GameUtils::ObjectType::ENEMY_PROJECTILE];
         }
 
         void PlayerStartup(GameUtils::Object& obj, sf::Vector2i initialPos);
@@ -51,7 +48,7 @@ namespace GameEngine
         void EnemyLogic(GameUtils::Object& obj);
         void ProjectileSetup(GameUtils::Object& obj);
         void ProjectileLogic(GameUtils::Object& obj);
-        void EnemyProjectileSetup(GameUtils::Object& obj, sf::Vector2i initialPos);
+        void EnemyProjectileSetup(GameUtils::Object& obj, sf::Vector2i initialPos, std::pair<GameUtils::ObjectType, int> assistId);
         void EnemyProjectileLogic(GameUtils::Object& obj);
 
     private:

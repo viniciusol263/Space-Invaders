@@ -50,7 +50,10 @@ namespace GameEngine
     void GameThread::SetScore(int score)
     {
         m_score = score;
+        if(m_score > m_highscore)
+            m_highscore = m_score;
         m_textSprites[GameUtils::TextType::SCORE].setString("Score: " + std::to_string(m_score));
+        m_textSprites[GameUtils::TextType::HIGH_SCORE].setString("Highscore: " + std::to_string(m_highscore));
     }
 
     void GameThread::InitializeState()
@@ -60,6 +63,8 @@ namespace GameEngine
 
         m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
         m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
+        m_textSprites[GameUtils::TextType::HIGH_SCORE] = {"Highscore: " + std::to_string(m_highscore), m_font, 24};
+        m_textSprites[GameUtils::TextType::HIGH_SCORE].setPosition({m_window->getDefaultView().getCenter().x - ((std::string("Highscore: ").size()/2)*m_textSprites[GameUtils::TextType::HIGH_SCORE].getCharacterSize()),m_textSprites[GameUtils::TextType::HIGH_SCORE].getPosition().y});
 
         GenerateSoundChannels();
 
@@ -73,7 +78,7 @@ namespace GameEngine
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(2, 2, 
+        CreateArrayObject(4, 4, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
                 return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
@@ -115,12 +120,25 @@ namespace GameEngine
 
     void GameThread::PauseLogic()
     {
-        if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        if(m_textSprites[GameUtils::TextType::PAUSE].getString() == "GAME OVER")
+        {
+            for(auto& [_, key] : m_keyMaps)
+            {
+                if(key->GetPressed())
+                {
+                    m_score = 0;
+                    CleanupGame();
+                    InitializeState();
+                    break;
+                }
+            }
+        }
+        else if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
         {
             m_paused = (m_paused + 1) % 4;
             m_textSprites.erase(GameUtils::TextType::PAUSE);
         }
-        if((m_paused == 1 || m_paused == 3) && !m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        else if((m_paused == 1 || m_paused == 3) && !m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
         {
             m_paused = (m_paused + 1) % 4;
             if(m_paused == 2)
@@ -147,19 +165,21 @@ namespace GameEngine
 
     void GameThread::RespawnGame()
     {
-        auto quantity = 0;
+        auto quantity = 0, playerExists = 0;
         for(auto obj : m_objects)
+        {
             if(obj.GetType() == GameUtils::ObjectType::ENEMY) ++quantity;
+            if(obj.GetType() == GameUtils::ObjectType::PLAYER) ++playerExists;
+        }
         if(quantity == 0)
         {
-            CreateArrayObject(2, 2, 
-                [this](sf::Vector2i vecPos, std::string id) 
-                {
-                    return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
-                            std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                            std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms);
-                }
-            );
+            CleanupGame();
+            InitializeState();
+        }
+        if(playerExists == 0)
+        {
+            BlockingTextScreen("GAME OVER");
+            m_paused = 2;
         }
     }
 
@@ -171,10 +191,10 @@ namespace GameEngine
             {
                 if(m_auxThreads[index] != nullptr) 
                 {
-                    if(m_auxThreads[index]->valid())
-                        m_auxThreads[index]->get();
-                    std::remove_if(m_auxThreads.begin(), m_auxThreads.end(), [this, index](const std::shared_ptr<std::future<void>>& thread) 
-                    -> std::shared_ptr<std::future<void>>
+                    if(m_auxThreads[index]->joinable())
+                        m_auxThreads[index]->join();
+                    std::remove_if(m_auxThreads.begin(), m_auxThreads.end(), [this, index](const std::shared_ptr<std::thread>& thread) 
+                    -> std::shared_ptr<std::thread>
                     {
                         if(thread.get() == m_auxThreads[index].get())
                             return thread;
@@ -183,6 +203,22 @@ namespace GameEngine
                 }
             }
         }
+    }
+
+    void GameThread::CleanupGame()
+    {
+        m_paused = 0;
+        for(auto index = 0; index < m_auxThreads.size(); ++index)
+        {
+            if(m_auxThreads[index] != nullptr) 
+            {
+                m_auxThreads[index]->join();
+            }
+        }
+        m_auxThreads.clear();
+        m_objects.clear();
+        m_textSprites.clear();
+        m_keyMaps.clear();
     }
 
 
@@ -200,7 +236,7 @@ namespace GameEngine
     void GameThread::DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop, std::function<void()> actionFunc)
     {
 
-        m_auxThreads.push_back(std::make_shared<std::future<void>>(std::async(std::launch::async, [this, &obj, isLoop, actionFunc, textureRow]()
+        m_auxThreads.push_back(std::make_shared<std::thread>([this, &obj, isLoop, actionFunc, textureRow]()
         {
             std::lock_guard lock(m_mutex);
             auto& objSprite = obj.GetSprite();
@@ -218,7 +254,7 @@ namespace GameEngine
             if(isLoop)
                 objSprite.setTextureRect(currentRenderRect);
             actionFunc();
-        })));
+        }));
     }
 
     void GameThread::PlayAudioChannel(GameUtils::SoundName soundName)
@@ -258,6 +294,7 @@ namespace GameEngine
 
             if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= 16ms)
             {
+                RespawnGame();
                 ClearScreen();
                 CaptureKeyInput();
                 PauseLogic();
@@ -266,11 +303,10 @@ namespace GameEngine
                     ExecuteLogic();
                 }
                 DrawSprites();
-                RespawnGame();
-                CleanupPointers();
                 m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
             }
+            CleanupPointers();
 
         }
     }
