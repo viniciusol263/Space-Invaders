@@ -25,12 +25,6 @@
 
 ### Controls:
 
-
-         W
-         |
- **A** - S - **D** **Space** **P**
-
-
 - Button **A** for moving the ship left.
 - Button **D** for moving the ship right.
 - Button **Space** for shooting.
