@@ -20,5 +20,6 @@ target_link_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} sfml-main sfml-system sfml-window sfml-graphics sfml-audio)
 
-file(GLOB SFML_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/bin/*.dll")
-file(COPY ${SFML_DLLS} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+file(GLOB DLLS "${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/bin/*.dll" 
+                "${CMAKE_CURRENT_SOURCE_DIR}/libs/Compiler Shared Objects/*.dll")
+file(COPY ${DLLS} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
