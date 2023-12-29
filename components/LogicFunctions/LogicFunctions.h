@@ -52,6 +52,7 @@ namespace GameEngine
         void EnemyProjectileLogic(GameUtils::Object& obj);
 
     private:
+        std::mutex m_mutex;
         std::shared_ptr<IGameThread> m_gameThread;
         std::map<std::pair<GameUtils::ObjectType, int>, LogicAssist> m_logicAssists;
         std::vector<GameUtils::Object> GetAllObjectByType(const GameUtils::ObjectType& type);

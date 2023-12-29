@@ -16,7 +16,7 @@ namespace GameEngine
     class GameThread : public IGameThread
     {
     public:
-        ~GameThread() = default;
+        ~GameThread();
 
         explicit GameThread(std::shared_ptr<sf::RenderWindow> window);
 
@@ -36,7 +36,6 @@ namespace GameEngine
     private: 
         GameThread() = default;
 
-        std::mutex m_mutex;
         std::shared_ptr<sf::RenderWindow> m_window;
         std::shared_ptr<sf::Texture> backgroundTexture;
         std::vector<std::shared_ptr<std::thread>> m_auxThreads;

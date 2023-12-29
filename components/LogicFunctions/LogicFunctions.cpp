@@ -168,10 +168,12 @@ namespace GameEngine
                 {
                     m_logicAssists[logicAssist].auxVariables[1] = 1;
                     m_gameThread->DoAnimatedAction(GetObjectReference(obj), false, textureRow, [this, obj, logicAssist](){
+                        std::scoped_lock lock(m_mutex);
                         DestroyObject(GetObjectReference(obj));
                         m_logicAssists[logicAssist].auxVariables[1] = 0;
                     });
                     m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), textureRow, false, [this, enemyObjs, objType, index, logicAssist, soundName](){
+                        std::scoped_lock lock(m_mutex);
                         m_gameThread->PlayAudioChannel(soundName);
                         DestroyObject(GetObjectReference(enemyObjs[index]));
                         m_logicAssists[logicAssist].auxVariables[0] = 0;

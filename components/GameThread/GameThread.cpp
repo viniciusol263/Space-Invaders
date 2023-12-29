@@ -20,6 +20,18 @@ namespace GameEngine
         m_lastFrameTime = std::chrono::steady_clock::now();
     }
 
+    GameThread::~GameThread()
+    {
+        for(auto index = 0; index < m_auxThreads.size(); ++index)
+        {
+            if(m_auxThreads[index] != nullptr) 
+            {
+                if(m_auxThreads[index]->joinable())
+                    m_auxThreads[index]->join();
+            }
+        }
+    }
+
     std::shared_ptr<sf::RenderWindow> GameThread::GetRenderWindow()
     {
         return m_window;
@@ -238,7 +250,6 @@ namespace GameEngine
 
         m_auxThreads.push_back(std::make_shared<std::thread>([this, &obj, isLoop, actionFunc, textureRow]()
         {
-            std::lock_guard lock(m_mutex);
             auto& objSprite = obj.GetSprite();
             auto currentRenderRect = objSprite.getTextureRect();
             auto textureSize = objSprite.getTexture()->getSize();

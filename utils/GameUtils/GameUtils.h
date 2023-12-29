@@ -95,6 +95,8 @@ namespace GameUtils
             }
         }
 
+        ~Object() = default;
+
         constexpr bool operator==(const Object& other) const 
         {
             return (m_id == other.m_id) &&

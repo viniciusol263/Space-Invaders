@@ -6,14 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(${PROJECT_NAME}_SRC 
     components/GameThread/GameThread.cpp
-    components/LogicFunctions/LogicFunctions.cpp)
+    components/LogicFunctions/LogicFunctions.cpp
+    images/icon.rc)
 
-add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SRC})
+add_executable(${PROJECT_NAME} WIN32 main.cpp ${${PROJECT_NAME}_SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
                             ${CMAKE_CURRENT_SOURCE_DIR}/components
                             ${CMAKE_CURRENT_SOURCE_DIR}/utils
                             ${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/include)
+
 
 target_link_directories(${PROJECT_NAME} PUBLIC
                         ${CMAKE_CURRENT_SOURCE_DIR}/libs/SFML/lib)
