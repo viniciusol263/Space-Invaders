@@ -8,9 +8,12 @@
 namespace GameEngine
 {
 
-    void LogicFunctions::PlayerStartup(GameUtils::Object& obj, sf::Vector2i initialPos)
+    void LogicFunctions::PlayerStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
     {
-        obj.GetSprite().setPosition(initialPos.x, initialPos.y);
+        auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
+        auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
+ 
+        obj.GetSprite().setPosition(posX, posY);
         m_logicAssists[projectileMapIndex] = DefaultAssists[GameUtils::ObjectType::PROJECTILE];
     }
 
@@ -37,19 +40,26 @@ namespace GameEngine
             });
         }
     }
-    void LogicFunctions::EnemyStartup(GameUtils::Object& obj, sf::Vector2i initialPos)
+    void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
         m_logicAssists[enemyInstance] = DefaultAssists[GameUtils::ObjectType::ENEMY];
         m_logicAssists[enemyProjectileMapIndex] = DefaultAssists[GameUtils::ObjectType::ENEMY_PROJECTILE];
 
-        obj.GetSprite().setPosition(initialPos.x, initialPos.y);
+        auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
+        auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
+ 
+        obj.GetSprite().setPosition(posX, posY);
+        obj.SetTimer(obj.GetAnimationFrametime(), true);
     }
 
     void LogicFunctions::EnemyLogic(GameUtils::Object& obj)
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
         
+        if(obj.TimerOverflown())
+            m_gameThread->DoAnimatedAction(obj, 1, true);
+
         if(m_logicAssists[enemyInstance].auxVariables[0]++ == 30)
         {
             m_logicAssists[enemyInstance].auxVariables[1] = -m_logicAssists[enemyInstance].auxVariables[1];
@@ -103,10 +113,10 @@ namespace GameEngine
             return;
         }
 
-        ObjectCollison(obj, GameUtils::ObjectType::ENEMY, projectileMapIndex, GameUtils::SoundName::ENEMY_DEATH);
+        ObjectCollison(obj, {GameUtils::ObjectType::ENEMY, GameUtils::ObjectType::BOSS}, projectileMapIndex, GameUtils::SoundName::ENEMY_DEATH);
     }
 
-    void LogicFunctions::EnemyProjectileSetup(GameUtils::Object& obj, sf::Vector2i initialPos, std::pair<GameUtils::ObjectType, int> assistId)
+    void LogicFunctions::EnemyProjectileSetup(GameUtils::Object& obj, const sf::Vector2i& initialPos, const std::pair<GameUtils::ObjectType, int>& assistId)
     {
         m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_SHOT); 
         obj.GetSprite().setPosition(initialPos.x, initialPos.y + obj.GetSprite().getGlobalBounds().getSize().y);
@@ -128,21 +138,47 @@ namespace GameEngine
             return;
         }
 
-        ObjectCollison(obj, GameUtils::ObjectType::PLAYER, enemyProjectileMapIndex, GameUtils::SoundName::ENEMY_DEATH, 1);
+        ObjectCollison(obj, {GameUtils::ObjectType::PLAYER}, enemyProjectileMapIndex, GameUtils::SoundName::ENEMY_DEATH, 1);
+    }
+    
+    void LogicFunctions::BossStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
+    {
+        auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
+        auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
+ 
+        obj.GetSprite().setPosition(posX, posY);
+        m_logicAssists[bossMapIndex] = DefaultAssists[GameUtils::ObjectType::BOSS];
+        obj.SetTimer(obj.GetAnimationFrametime(), true);
     }
 
-    std::vector<GameUtils::Object> LogicFunctions::GetAllObjectByType(const GameUtils::ObjectType& type)
+    void LogicFunctions::BossLogic(GameUtils::Object& obj)
+    {   
+        const int movementRange = (m_gameThread->GetRenderWindow()->getDefaultView().getSize().x/4);
+        if(obj.TimerOverflown())
+            m_gameThread->DoAnimatedAction(obj, 0, true);
+        if(obj.GetSprite().getPosition().x <= (movementRange - (obj.GetSprite().getTextureRect().getSize().x/2)) || obj.GetSprite().getPosition().x >= (3*movementRange))
+        {
+            m_logicAssists[bossMapIndex].auxVariables[1] = -m_logicAssists[bossMapIndex].auxVariables[1];
+        }
+        int nextPosition = obj.GetSprite().getPosition().x - m_logicAssists[bossMapIndex].auxVariables[1];
+        if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition = 0;
+        if(nextPosition <= 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
+        obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
+    }
+
+    std::vector<GameUtils::Object> LogicFunctions::GetAllObjectByTypes(const std::vector<GameUtils::ObjectType>& types)
     {
         std::vector<GameUtils::Object> m_vector;
         for(auto index = 0; index < m_gameThread->GetObjects().size(); ++index)
         {
-            if(m_gameThread->GetObjects()[index].GetType() == type)
-                m_vector.push_back(m_gameThread->GetObjects()[index]);
+            for(auto type : types)
+                if(m_gameThread->GetObjects()[index].GetType() == type)
+                    m_vector.push_back(m_gameThread->GetObjects()[index]);
         }
         return m_vector;
     }
 
-    GameUtils::Object& LogicFunctions::GetObjectReference(GameUtils::Object obj)
+    GameUtils::Object& LogicFunctions::GetObjectReference(const GameUtils::Object& obj)
     {
         return *std::find(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), obj);
     }
@@ -152,10 +188,10 @@ namespace GameEngine
         m_gameThread->GetObjects().erase(std::find(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), obj));
     }
 
-    void LogicFunctions::ObjectCollison(GameUtils::Object& obj, GameUtils::ObjectType objType, std::pair<GameUtils::ObjectType, int> logicAssist, GameUtils::SoundName soundName, int textureRow)
+    void LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow)
     {
         auto currentPosition = obj.GetSprite().getPosition();
-        auto enemyObjs = GetAllObjectByType(objType);
+        auto enemyObjs = GetAllObjectByTypes(objTypes);
         if(enemyObjs.size() > 0 && m_logicAssists[logicAssist].auxVariables[1] == 0)
         {
             for(auto index = 0; index < enemyObjs.size(); ++index)
@@ -163,8 +199,11 @@ namespace GameEngine
                 auto enemyPosition = enemyObjs[index].GetSprite().getPosition();
                 auto dx = (int)std::abs(currentPosition.x - enemyPosition.x);
                 auto dy = (int)std::abs(currentPosition.y - enemyPosition.y);
-                auto r = (int)enemyObjs[index].GetSprite().getGlobalBounds().getSize().x;
+                auto r = (int)enemyObjs[index].GetSprite().getTextureRect().getSize().x;
+
+
                 if(std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2)) 
+                // if(true)
                 {
                     m_logicAssists[logicAssist].auxVariables[1] = 1;
                     m_gameThread->DoAnimatedAction(GetObjectReference(obj), false, textureRow, [this, obj, logicAssist](){
@@ -172,13 +211,19 @@ namespace GameEngine
                         DestroyObject(GetObjectReference(obj));
                         m_logicAssists[logicAssist].auxVariables[1] = 0;
                     });
-                    m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), textureRow, false, [this, enemyObjs, objType, index, logicAssist, soundName](){
+                    m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), textureRow, false, [this, enemyObjs, objTypes, index, logicAssist, soundName](){
                         std::scoped_lock lock(m_mutex);
+                        auto& objRef = GetObjectReference(enemyObjs[index]);
                         m_gameThread->PlayAudioChannel(soundName);
-                        DestroyObject(GetObjectReference(enemyObjs[index]));
+                        objRef.SetHitPoints(objRef.GetHitPoints() - 1);
+                        if(objRef.GetHitPoints() <= 0)
+                        {
+                            DestroyObject(objRef);
+                            for(auto objType : objTypes)
+                                if(objType == GameUtils::ObjectType::ENEMY)
+                                    m_gameThread->SetScore(++m_gameThread->GetScore());
+                        }
                         m_logicAssists[logicAssist].auxVariables[0] = 0;
-                        if(objType == GameUtils::ObjectType::ENEMY)
-                            m_gameThread->SetScore(++m_gameThread->GetScore());
                     });
                     return;
                 }   

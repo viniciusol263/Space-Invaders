@@ -7,6 +7,7 @@
 #include <utility>
 #include <mutex>
 #include <thread>
+#include <tuple>
 
 #include "IGameThread.h"
 #include "LogicFunctions/LogicFunctions.h"
@@ -18,19 +19,19 @@ namespace GameEngine
     public:
         ~GameThread();
 
-        explicit GameThread(std::shared_ptr<sf::RenderWindow> window);
+        explicit GameThread(const std::shared_ptr<sf::RenderWindow>& window);
 
         std::shared_ptr<sf::RenderWindow> GetRenderWindow() override;
         std::vector<GameUtils::Object>& GetObjects() override;
-        void CreateObject(std::string id = "UNKNOWN", GameUtils::ObjectType objType = GameUtils::ObjectType::PLAYER, 
-            std::string texturePath = "", std::string soundPath = "",
-            std::function<void(GameUtils::Object&)> startupHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> logicHandler = [](GameUtils::Object&){}, 
-            std::chrono::milliseconds animationFrametime = 166ms) override;
+        void CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+            const std::string& texturePath = "", const std::string& soundPath = "",
+            const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
         int& GetScore() override;
-        void SetScore(int score) override;
-        void PlayAudioChannel(GameUtils::SoundName soundName) override;
-        void DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop = true, std::function<void()> actionFunc = [](){}) override;
+        void SetScore(const int& score) override;
+        void PlayAudioChannel(const GameUtils::SoundName& soundName) override;
+        void DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop = true, const std::function<void()>& actionFunc = [](){}) override;
 
         void GameWatcherThread() override;
     private: 
@@ -49,6 +50,7 @@ namespace GameEngine
         int m_score = 0;
         int m_highscore = 0;
         int m_paused = 0;
+        GameUtils::Progression m_progression;
 
         
         sf::Event m_keyboardEvent;
@@ -61,13 +63,14 @@ namespace GameEngine
         void ExecuteLogic() override;
         void DrawSprites() override;
         void ClearScreen() override;
-        void RespawnGame() override;
+        void ProgressionCheck() override;
         void CleanupPointers() override;
         void CleanupGame() override;
 
         void GenerateSoundChannels();
-        void CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder);
-        void BlockingTextScreen(std::string text);
+        void CreateArrayObject(const int& rows, const int& columns, const std::function<GameUtils::Object(sf::Vector2i, std::string)>& objectBuilder);
+        void BlockingTextScreen(const std::string& text);
+        std::tuple<int,int,int> GetLiveObjects(); 
 
     };
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <future>
 #include <iostream>
+#include <utility>
 
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
@@ -27,7 +28,8 @@ namespace GameUtils
         PLAYER = 0,
         PROJECTILE,
         ENEMY,
-        ENEMY_PROJECTILE
+        ENEMY_PROJECTILE,
+        BOSS
     };
 
     static std::string ObjectTypeToString(const ObjectType& type) 
@@ -38,7 +40,17 @@ namespace GameUtils
             case ObjectType::PROJECTILE: return "Projectile";
             case ObjectType::ENEMY: return "Enemy";
             case ObjectType::ENEMY_PROJECTILE: return "Enemy Projectile";
+            case ObjectType::BOSS: return "Boss";
             default: return "";
+        }
+    }
+
+    static std::pair<int,int> TextureSizeFromObjectType(const ObjectType& type)
+    {
+        switch(type)
+        {
+            case ObjectType::BOSS: return std::make_pair(128,128);
+            default: return std::make_pair(32,32);
         }
     }
 
@@ -49,9 +61,9 @@ namespace GameUtils
         sf::Keyboard::Scancode::P
     };
 
-    constexpr std::array<std::string,3> soundFiles = {"enemy-death.wav", "enemy-shot.wav", "player-shot.wav"};
+    const std::array<std::string,3> soundFiles = {"enemy-death.wav", "enemy-shot.wav", "player-shot.wav"};
 
-
+    
     enum class SoundName : int
     {
         ENEMY_DEATH = 0,
@@ -70,19 +82,28 @@ namespace GameUtils
         }
     }
 
+    enum class Progression : int
+    {
+      NORMAL_GAME = 0,
+      BOSS_PHASE,
+      RESPAWN,
+      GAME_OVER  
+    };
+
 
     class Object 
     {
     public:
-        Object(std::string id = "UNKNOWN", ObjectType objType = ObjectType::PLAYER, std::string texturePath = "", std::string soundPath = "", std::function<void(GameUtils::Object&)> startupHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> logicHandler = [](GameUtils::Object&){}, std::chrono::milliseconds animationFrametime = 166ms) : 
-            m_id(id), m_objType(objType), m_soundBufferPath(soundPath), m_startupHandler(startupHandler), m_logicHandler(logicHandler), m_animationFrametime(animationFrametime)
+        Object(const std::string& id = "UNKNOWN", const ObjectType& objType = ObjectType::PLAYER, const std::string& texturePath = "", const std::string& soundPath = "", const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) : 
+            m_id(id), m_objType(objType), m_soundBufferPath(soundPath), m_startupHandler(startupHandler), m_logicHandler(logicHandler), m_animationFrametime(animationFrametime), m_hitPoints(hitPoints)
         {
             if(m_id != "UNKNOWN")
             {             
                 m_objTexture = std::make_shared<sf::Texture>();
                 m_objTexture->loadFromFile(texturePath);
                 m_objSprite.setTexture(*m_objTexture);
-                m_objSprite.setTextureRect(sf::IntRect{sf::Vector2i{0,0}, sf::Vector2i{32,32}});
+                auto [textureWidth, textureHeigth] = TextureSizeFromObjectType(objType);
+                m_objSprite.setTextureRect(sf::IntRect{sf::Vector2i{0,0}, sf::Vector2i{textureWidth,textureHeigth}});
                 
                 if(soundPath != "")
                 {
@@ -133,6 +154,53 @@ namespace GameUtils
             return m_animationFrametime;
         }
 
+        void SetTimer(const std::chrono::milliseconds& time, const bool& continous)
+        {
+            if(time == 0ms)
+            {
+                m_timer = nullptr;
+                return;
+            }
+            m_timer = std::make_shared<std::tuple<std::chrono::milliseconds, std::chrono::steady_clock::time_point, bool>>(time, std::chrono::steady_clock::now(), continous);
+        }
+
+        bool TimerOverflown() 
+        {
+            if(m_timer == nullptr) 
+            {
+                return false;
+            }
+
+            auto [time, timer, continous] = *m_timer;
+            if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - timer) >= time)
+            {
+                if(continous)
+                    m_timer = std::make_shared<std::tuple<std::chrono::milliseconds, std::chrono::steady_clock::time_point, bool>>(time, std::chrono::steady_clock::now(), continous);
+                return true;
+            }
+            return false;
+        }
+
+        int GetHitPoints() const
+        {
+            return m_hitPoints;
+        }
+
+        void SetHitPoints(const int& value)
+        {
+            m_hitPoints = value;
+        }
+
+        bool GetAnimRunning()
+        {
+            return m_animRunning;
+        }
+
+        void SetAnimRunning(const bool& value)
+        {
+            m_animRunning = value;
+        }
+
         void StepLogic()
         {
             m_logicHandler(*this);
@@ -149,13 +217,16 @@ namespace GameUtils
         sf::Sprite m_objSprite;
         sf::Sound m_objSound;
         std::chrono::milliseconds m_animationFrametime;
+        std::shared_ptr<std::tuple<std::chrono::milliseconds, std::chrono::steady_clock::time_point, bool>> m_timer;
+        int m_hitPoints;
+        bool m_animRunning = false;
         
     };
 
     class Input
     {
     public:
-        Input(sf::Keyboard::Scancode inputIdentifier) : m_inputIdentifier(inputIdentifier)
+        Input(const sf::Keyboard::Scancode& inputIdentifier) : m_inputIdentifier(inputIdentifier)
         {}
 
         void SetPressed(bool isPressed)
@@ -177,5 +248,6 @@ namespace GameUtils
         sf::Keyboard::Scancode m_inputIdentifier;
         bool m_isPressed = false;
     };
+
 
 }

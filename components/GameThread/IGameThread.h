@@ -17,15 +17,15 @@ namespace GameEngine
 
         virtual std::shared_ptr<sf::RenderWindow> GetRenderWindow() = 0;
         virtual std::vector<GameUtils::Object>& GetObjects() = 0;
-        virtual void CreateObject(std::string id = "UNKNOWN", GameUtils::ObjectType objType = GameUtils::ObjectType::PLAYER, 
-            std::string texturePath = "", std::string soundPath = "",
-            std::function<void(GameUtils::Object&)> startupHandler = [](GameUtils::Object&){}, std::function<void(GameUtils::Object&)> logicHandler = [](GameUtils::Object&){}, 
-            std::chrono::milliseconds animationFrametime = 166ms) = 0;
+        virtual void CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+            const std::string& texturePath = "", const std::string& soundPath = "",
+            const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) = 0;
         virtual std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() = 0;
         virtual int& GetScore() = 0;
-        virtual void SetScore(int score) = 0;
-        virtual void PlayAudioChannel(GameUtils::SoundName soundName) = 0;
-        virtual void DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop = true, std::function<void()> actionFunc = [](){}) = 0;
+        virtual void SetScore(const int& score) = 0;
+        virtual void PlayAudioChannel(const GameUtils::SoundName& soundName) = 0;
+        virtual void DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop = true, const std::function<void()>& actionFunc = [](){}) = 0;
 
         virtual void GameWatcherThread() = 0;
     private:
@@ -35,7 +35,7 @@ namespace GameEngine
         virtual void ExecuteLogic() = 0;
         virtual void DrawSprites() = 0;
         virtual void ClearScreen() = 0;
-        virtual void RespawnGame() = 0;
+        virtual void ProgressionCheck() = 0;
         virtual void CleanupPointers() = 0;
         virtual void CleanupGame() = 0;
 

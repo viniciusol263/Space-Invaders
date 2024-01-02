@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 #include "GameThread.h"
 #include "SFML/Graphics.hpp"
@@ -10,7 +11,7 @@ using namespace std::chrono_literals;
 
 namespace GameEngine
 {
-    GameThread::GameThread(std::shared_ptr<sf::RenderWindow> window) :
+    GameThread::GameThread(const std::shared_ptr<sf::RenderWindow>& window) :
         m_window(std::move(window))
     {
         m_logicFunction = std::make_shared<LogicFunctions>(std::shared_ptr<GameThread>(this));
@@ -42,11 +43,12 @@ namespace GameEngine
         return m_objects;
     }
 
-    void GameThread::CreateObject(std::string id, GameUtils::ObjectType objType, 
-        std::string texturePath, std::string soundPath,
-        std::function<void(GameUtils::Object&)> startupHandler, std::function<void(GameUtils::Object&)> logicHandler, std::chrono::milliseconds animationFrametime)
+    void GameThread::CreateObject(const std::string& id , const GameUtils::ObjectType& objType, 
+            const std::string& texturePath, const std::string& soundPath,
+            const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
+            const std::chrono::milliseconds& animationFrametime, const int& hitPoints)
     {
-        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime);
+        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
     }
 
     std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GameThread::GetKeys()
@@ -59,7 +61,7 @@ namespace GameEngine
         return m_score;
     }
 
-    void GameThread::SetScore(int score)
+    void GameThread::SetScore(const int& score)
     {
         m_score = score;
         if(m_score > m_highscore)
@@ -73,6 +75,7 @@ namespace GameEngine
 
         auto windowSize = m_window->getSize();
 
+        m_progression = GameUtils::Progression::NORMAL_GAME;
         m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
         m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
         m_textSprites[GameUtils::TextType::HIGH_SCORE] = {"Highscore: " + std::to_string(m_highscore), m_font, 24};
@@ -86,11 +89,11 @@ namespace GameEngine
         //Putting Player ship on the rendering pipeline
         CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/multi-anim-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
-            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 166ms);
+            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 100ms);
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(4, 4, 
+        CreateArrayObject(1, 1, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
                 return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
@@ -175,21 +178,31 @@ namespace GameEngine
         m_window->draw(backgroundSprite);
     }
 
-    void GameThread::RespawnGame()
-    {
-        auto quantity = 0, playerExists = 0;
-        for(auto obj : m_objects)
+    void GameThread::ProgressionCheck()
+    {   
+        auto [enemySize, playerLive, bossLive] = GetLiveObjects();
+
+        if(enemySize == 0)
         {
-            if(obj.GetType() == GameUtils::ObjectType::ENEMY) ++quantity;
-            if(obj.GetType() == GameUtils::ObjectType::PLAYER) ++playerExists;
+            if(m_progression == GameUtils::Progression::BOSS_PHASE && bossLive == 0)
+            {
+                m_progression = GameUtils::Progression::RESPAWN;
+                CleanupGame();
+                InitializeState();
+            }
+
+            else if(m_progression == GameUtils::Progression::NORMAL_GAME)
+            {
+                m_progression = GameUtils::Progression::BOSS_PHASE;
+                CreateObject("1", GameUtils::ObjectType::BOSS, "../resources/texture/animated-boss-ship.png", "", 
+                    std::bind(&LogicFunctions::BossStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)m_window->getDefaultView().getCenter().x, 0}),
+                    std::bind(&LogicFunctions::BossLogic, m_logicFunction, std::placeholders::_1), 326ms, 5);
+            }
+
         }
-        if(quantity == 0)
+        if(playerLive == 0)
         {
-            CleanupGame();
-            InitializeState();
-        }
-        if(playerExists == 0)
-        {
+            m_progression = GameUtils::Progression::GAME_OVER;
             BlockingTextScreen("GAME OVER");
             m_paused = 2;
         }
@@ -197,7 +210,7 @@ namespace GameEngine
 
     void GameThread::CleanupPointers()
     {
-        if(m_auxThreads.size() == 20)
+        if(m_auxThreads.size() == 2)
         {
             for(auto index = 0; index < m_auxThreads.size(); ++index)
             {
@@ -245,9 +258,8 @@ namespace GameEngine
         }
     }
 
-    void GameThread::DoAnimatedAction(GameUtils::Object& obj, int textureRow, bool isLoop, std::function<void()> actionFunc)
+    void GameThread::DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop, const std::function<void()>& actionFunc)
     {
-
         m_auxThreads.push_back(std::make_shared<std::thread>([this, &obj, isLoop, actionFunc, textureRow]()
         {
             auto& objSprite = obj.GetSprite();
@@ -268,20 +280,22 @@ namespace GameEngine
         }));
     }
 
-    void GameThread::PlayAudioChannel(GameUtils::SoundName soundName)
+    void GameThread::PlayAudioChannel(const GameUtils::SoundName& soundName)
     {
         m_generalSoundChannels[GameUtils::SoundNameToString(soundName)].second.play();
     }
 
-    void GameThread::CreateArrayObject(int rows, int columns, std::function<GameUtils::Object(sf::Vector2i, std::string)> objectBuilder)
+    void GameThread::CreateArrayObject(const int& rows, const int& columns, const std::function<GameUtils::Object(sf::Vector2i, std::string)>& objectBuilder)
     {
-        auto windowSize = m_window->getSize();
+        auto windowSize = m_window->getDefaultView().getSize();
+        auto additiveRatio = std::floor(windowSize.x / columns);
+
         for(auto row = 0; row < rows; ++row)
         {
             for(auto column = 0; column < columns; ++column)
             {     
                 m_objects.push_back(objectBuilder(sf::Vector2i{
-                    (int)(windowSize.x * (0.20 * (row + 1))),  // X
+                    (int)(std::floor(additiveRatio/2) + (row * additiveRatio)),  // X
                     (int)(windowSize.y * (0.1*(column + 1)))}, // Y
                     std::to_string(row + column*rows))   
                 );
@@ -289,13 +303,34 @@ namespace GameEngine
         }
     }
 
-    void GameThread::BlockingTextScreen(std::string text)
+    void GameThread::BlockingTextScreen(const std::string& text)
     {
         m_textSprites[GameUtils::TextType::PAUSE] = {text, m_font, 60};
         auto textSize = m_textSprites[GameUtils::TextType::PAUSE].getCharacterSize();
         auto textLength = m_textSprites[GameUtils::TextType::PAUSE].getString().getSize();
         m_textSprites[GameUtils::TextType::PAUSE].setFillColor(sf::Color::White);
         m_textSprites[GameUtils::TextType::PAUSE].setPosition({(m_window->getDefaultView().getSize().x/2.0f) - (textLength/2)*textSize, (m_window->getDefaultView().getSize().y/2.0f) - textSize});
+    }
+
+    std::tuple<int,int,int> GameThread::GetLiveObjects()
+    {
+        auto quantity = 0, playerExists = 0, bossExists = 0;
+        for(auto obj : m_objects)
+        {
+            switch(obj.GetType())
+            {
+                case GameUtils::ObjectType::ENEMY:
+                    ++quantity;
+                    break;
+                case GameUtils::ObjectType::PLAYER:
+                    ++playerExists;
+                    break;
+                case GameUtils::ObjectType::BOSS:
+                    ++bossExists;
+                    break;
+            }
+        }
+        return std::make_tuple(quantity, playerExists, bossExists);
     }
 
     void GameThread::GameWatcherThread()
@@ -305,7 +340,7 @@ namespace GameEngine
 
             if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= 16ms)
             {
-                RespawnGame();
+                ProgressionCheck();
                 ClearScreen();
                 CaptureKeyInput();
                 PauseLogic();
@@ -316,6 +351,7 @@ namespace GameEngine
                 DrawSprites();
                 m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
+                
             }
             CleanupPointers();
 
