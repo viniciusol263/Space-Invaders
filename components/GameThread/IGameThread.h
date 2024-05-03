@@ -21,11 +21,11 @@ namespace GameEngine
 
         virtual std::shared_ptr<sf::RenderWindow> GetRenderWindow() = 0;
         virtual std::vector<GameUtils::Object>& GetObjects() = 0;
-        virtual void CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+        virtual GameUtils::Object& CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) = 0;
-        virtual void CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+        virtual GameUtils::Object& CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) = 0;
@@ -45,7 +45,6 @@ namespace GameEngine
         virtual void DrawSprites() = 0;
         virtual void ClearScreen() = 0;
         virtual void ProgressionCheck() = 0;
-        virtual void CleanupPointers() = 0;
         virtual void CleanupGame() = 0;
 
 

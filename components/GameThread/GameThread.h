@@ -23,12 +23,12 @@ namespace GameEngine
 
         std::shared_ptr<sf::RenderWindow> GetRenderWindow() override;
         std::vector<GameUtils::Object>& GetObjects() override;
-        void CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+        GameUtils::Object& CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
-        void CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+        GameUtils::Object& CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) override;
@@ -44,7 +44,6 @@ namespace GameEngine
 
         std::shared_ptr<sf::RenderWindow> m_window;
         std::shared_ptr<sf::Texture> backgroundTexture;
-        std::vector<std::shared_ptr<std::thread>> m_auxThreads;
         std::unordered_map<std::string,std::pair<std::shared_ptr<sf::SoundBuffer>, sf::Sound>> m_generalSoundChannels;
         sf::Sprite backgroundSprite;
         sf::Font m_font;
@@ -69,7 +68,6 @@ namespace GameEngine
         void DrawSprites() override;
         void ClearScreen() override;
         void ProgressionCheck() override;
-        void CleanupPointers() override;
         void CleanupGame() override;
 
         void GenerateSoundChannels();

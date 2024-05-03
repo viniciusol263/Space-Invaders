@@ -22,15 +22,14 @@ namespace GameEngine
     }
 
     GameThread::~GameThread()
-    {
-        for(auto index = 0; index < m_auxThreads.size(); ++index)
+    {        
+        for(auto soundFile : GameUtils::soundFiles)
         {
-            if(m_auxThreads[index] != nullptr) 
-            {
-                if(m_auxThreads[index]->joinable())
-                    m_auxThreads[index]->join();
-            }
+            m_generalSoundChannels[soundFile].second.stop();
+            while(m_generalSoundChannels[soundFile].second.getStatus() != sf::Sound::Stopped);
+            m_generalSoundChannels[soundFile].first.reset();
         }
+        m_generalSoundChannels.clear();
     }
 
     std::shared_ptr<sf::RenderWindow> GameThread::GetRenderWindow()
@@ -43,21 +42,23 @@ namespace GameEngine
         return m_objects;
     }
 
-    void GameThread::CreateObject(const std::string& id , const GameUtils::ObjectType& objType, 
+    GameUtils::Object& GameThread::CreateObject(const std::string& id , const GameUtils::ObjectType& objType, 
             const std::string& texturePath, const std::string& soundPath,
             const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
             const std::chrono::milliseconds& animationFrametime, const int& hitPoints)
     {
         m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
+        return m_objects.back();
     }
 
-    void GameThread::CreateObjectAnimated(const std::string& id, const GameUtils::ObjectType& objType, 
+    GameUtils::Object& GameThread::CreateObjectAnimated(const std::string& id, const GameUtils::ObjectType& objType, 
             const std::string& texturePath, const std::string& soundPath,
             const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
             const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& textureRow, const bool& isLoop) 
     {
         m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
         m_objects.back().SetupAnimatedAction(textureRow, isLoop);
+        return m_objects.back();
     }
 
     void GameThread::DestroyObject(const GameUtils::Object& obj)
@@ -113,17 +114,12 @@ namespace GameEngine
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(2, 2, 
+        CreateArrayObject(3, 3, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
-                CreateObjectAnimated(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
+                return CreateObjectAnimated(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
                         std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms, 1, 1, true);
-                auto objNew = std::find_if(m_objects.begin(), m_objects.end(), [this, id](const GameUtils::Object& obj)
-                {
-                    return obj.GetId() == id;
-                });
-                return *objNew;
             }
         );
 
@@ -241,39 +237,11 @@ namespace GameEngine
         }
     }
 
-    void GameThread::CleanupPointers()
-    {
-        if(m_auxThreads.size() == 2)
-        {
-            for(auto index = 0; index < m_auxThreads.size(); ++index)
-            {
-                if(m_auxThreads[index] != nullptr) 
-                {
-                    if(m_auxThreads[index]->joinable())
-                        m_auxThreads[index]->join();
-                    std::remove_if(m_auxThreads.begin(), m_auxThreads.end(), [this, index](const std::shared_ptr<std::thread>& thread) 
-                    -> std::shared_ptr<std::thread>
-                    {
-                        if(thread.get() == m_auxThreads[index].get())
-                            return thread;
-                        return nullptr;
-                    });
-                }
-            }
-        }
-    }
 
     void GameThread::CleanupGame()
     {
         m_paused = 0;
-        for(auto index = 0; index < m_auxThreads.size(); ++index)
-        {
-            if(m_auxThreads[index] != nullptr) 
-            {
-                m_auxThreads[index]->join();
-            }
-        }
-        m_auxThreads.clear();
+
         m_objects.clear();
         m_textSprites.clear();
         m_keyMaps.clear();
@@ -363,7 +331,6 @@ namespace GameEngine
                 m_lastFrameTime = std::chrono::steady_clock::now();
                 
             }
-            // CleanupPointers();
 
         }
     }
