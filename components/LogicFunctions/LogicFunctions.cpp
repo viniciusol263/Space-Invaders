@@ -34,9 +34,10 @@ namespace GameEngine
         if(projectile && m_logicAssists[projectileMapIndex].auxVariables[0] == 0)
         {
             m_logicAssists[projectileMapIndex].auxVariables[0] = 1;
-            m_gameThread->CreateObjectAnimated("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
+            obj.SetupAnimatedAction(0, false);
+            m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
                 std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
-                std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1), 150ms, 1 , 0, true);
+                std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1), 150ms, 1);
         }
     }
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
@@ -75,9 +76,9 @@ namespace GameEngine
         if(dist(rng) >= 80 && m_logicAssists[enemyProjectileMapIndex].auxVariables[0] == 0)
         {
             m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 1;
-            m_gameThread->CreateObjectAnimated("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
+            m_gameThread->CreateObject("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
                 std::bind(LogicFunctions::EnemyProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x,position.y}, enemyInstance),
-                std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 150ms, 1, 0, true);
+                std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 150ms, 1);
         }
 
 

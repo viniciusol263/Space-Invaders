@@ -108,12 +108,8 @@ namespace GameUtils
             {
                     if(m_animationStep == m_frameQuantity) 
                     {
-                        if(m_isLoop)
-                        {
-                            m_animationStep = 0;
-                            // m_objSprite.setTextureRect(m_currentRenderRect);
-                        }
-                        else
+                        m_animationStep = 0;
+                        if(!m_isLoop)
                         {
                             m_animRunning = false;
                             if(m_destroyOnFinish)
