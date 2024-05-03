@@ -95,7 +95,7 @@ namespace GameUtils
             m_isLoop = isLoop;
             m_animRunning = true;
             m_animationStartTime = std::chrono::steady_clock::now();
-            m_animationStep = 0;
+            m_animationStep = 1;
             m_destroyOnFinish = destroyOnFinish;
             m_destroyAction = destroyAction;
         }
