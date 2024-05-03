@@ -5,6 +5,10 @@
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
 #include "SFML/Audio.hpp"
+
+#include "Object/Object.h"
+#include "Input/Input.h"
+#include "Sound/Sound.h"
 #include "GameUtils/GameUtils.h"
 
 
@@ -21,11 +25,16 @@ namespace GameEngine
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) = 0;
+        virtual void CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+            const std::string& texturePath = "", const std::string& soundPath = "",
+            const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) = 0;
+        virtual void DestroyObject(const GameUtils::Object& obj) = 0;
+        virtual void DestroyObjectAnimated(const GameUtils::Object& obj, const int& textureRow) = 0;
         virtual std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() = 0;
         virtual int& GetScore() = 0;
         virtual void SetScore(const int& score) = 0;
         virtual void PlayAudioChannel(const GameUtils::SoundName& soundName) = 0;
-        virtual void DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop = true, const std::function<void()>& actionFunc = [](){}) = 0;
 
         virtual void GameWatcherThread() = 0;
     private:
