@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(${PROJECT_NAME}_SRC 
     components/GameThread/GameThread.cpp
     components/LogicFunctions/LogicFunctions.cpp
+    components/Object/Object.cpp
+    components/Input/Input.cpp
     images/icon.rc)
 
 add_executable(${PROJECT_NAME} WIN32 main.cpp ${${PROJECT_NAME}_SRC})

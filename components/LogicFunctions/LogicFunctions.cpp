@@ -3,6 +3,7 @@
 #include <random>
 
 #include "LogicFunctions.h"
+#include "Input/Input.h"
 #include "GameThread/GameThread.h"
 
 namespace GameEngine
@@ -33,11 +34,9 @@ namespace GameEngine
         if(projectile && m_logicAssists[projectileMapIndex].auxVariables[0] == 0)
         {
             m_logicAssists[projectileMapIndex].auxVariables[0] = 1;
-            m_gameThread->DoAnimatedAction(obj, 0, true, [this](){
-                m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
-                    std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
-                    std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1), 300ms);
-            });
+            m_gameThread->CreateObjectAnimated("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
+                std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
+                std::bind(LogicFunctions::ProjectileLogic, this, std::placeholders::_1), 150ms, 1 , 0, true);
         }
     }
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
@@ -57,9 +56,6 @@ namespace GameEngine
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
         
-        if(obj.TimerOverflown())
-            m_gameThread->DoAnimatedAction(obj, 1, true);
-
         if(m_logicAssists[enemyInstance].auxVariables[0]++ == 30)
         {
             m_logicAssists[enemyInstance].auxVariables[1] = -m_logicAssists[enemyInstance].auxVariables[1];
@@ -79,9 +75,9 @@ namespace GameEngine
         if(dist(rng) >= 80 && m_logicAssists[enemyProjectileMapIndex].auxVariables[0] == 0)
         {
             m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 1;
-            m_gameThread->CreateObject("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
+            m_gameThread->CreateObjectAnimated("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
                 std::bind(LogicFunctions::EnemyProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x,position.y}, enemyInstance),
-                std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 300ms);
+                std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 150ms, 1, 0, true);
         }
 
 
@@ -154,8 +150,7 @@ namespace GameEngine
     void LogicFunctions::BossLogic(GameUtils::Object& obj)
     {   
         const int movementRange = (m_gameThread->GetRenderWindow()->getDefaultView().getSize().x/4);
-        if(obj.TimerOverflown())
-            m_gameThread->DoAnimatedAction(obj, 0, true);
+
         if(obj.GetSprite().getPosition().x <= (movementRange - (obj.GetSprite().getTextureRect().getSize().x/2)) || obj.GetSprite().getPosition().x >= (3*movementRange))
         {
             m_logicAssists[bossMapIndex].auxVariables[1] = -m_logicAssists[bossMapIndex].auxVariables[1];
@@ -203,28 +198,25 @@ namespace GameEngine
 
 
                 if(std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2)) 
-                // if(true)
                 {
                     m_logicAssists[logicAssist].auxVariables[1] = 1;
-                    m_gameThread->DoAnimatedAction(GetObjectReference(obj), false, textureRow, [this, obj, logicAssist](){
-                        std::scoped_lock lock(m_mutex);
-                        DestroyObject(GetObjectReference(obj));
+                    obj.SetupAnimatedAction(textureRow, false, true, [this, logicAssist] {
+                        m_logicAssists[logicAssist].auxVariables[0] = 0;
                         m_logicAssists[logicAssist].auxVariables[1] = 0;
                     });
-                    m_gameThread->DoAnimatedAction(GetObjectReference(enemyObjs[index]), textureRow, false, [this, enemyObjs, objTypes, index, logicAssist, soundName](){
-                        std::scoped_lock lock(m_mutex);
-                        auto& objRef = GetObjectReference(enemyObjs[index]);
-                        m_gameThread->PlayAudioChannel(soundName);
-                        objRef.SetHitPoints(objRef.GetHitPoints() - 1);
-                        if(objRef.GetHitPoints() <= 0)
-                        {
-                            DestroyObject(objRef);
+
+                    auto& objRef = GetObjectReference(enemyObjs[index]);
+                    m_gameThread->PlayAudioChannel(soundName);
+                    objRef.SetHitPoints(objRef.GetHitPoints() - 1);
+                    if(objRef.GetHitPoints() <= 0)
+                    {
+                        objRef.SetHitPoints(999);
+                        objRef.SetupAnimatedAction(textureRow, false, true, [this, logicAssist, objTypes]() {
                             for(auto objType : objTypes)
                                 if(objType == GameUtils::ObjectType::ENEMY)
                                     m_gameThread->SetScore(++m_gameThread->GetScore());
-                        }
-                        m_logicAssists[logicAssist].auxVariables[0] = 0;
-                    });
+                        });
+                    }
                     return;
                 }   
             }

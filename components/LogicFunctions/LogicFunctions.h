@@ -6,6 +6,8 @@
 #include <utility>
 #include <mutex>
 
+#include "Object/Object.h"
+#include "Sound/Sound.h"
 #include "GameThread/IGameThread.h"
 
 namespace GameEngine

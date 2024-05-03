@@ -28,10 +28,15 @@ namespace GameEngine
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
             const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
+        void CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
+            const std::string& texturePath = "", const std::string& soundPath = "",
+            const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) override;
+        void DestroyObject(const GameUtils::Object& obj) override;
+        void DestroyObjectAnimated(const GameUtils::Object& obj, const int& textureRow) override;
         int& GetScore() override;
         void SetScore(const int& score) override;
         void PlayAudioChannel(const GameUtils::SoundName& soundName) override;
-        void DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop = true, const std::function<void()>& actionFunc = [](){}) override;
 
         void GameWatcherThread() override;
     private: 

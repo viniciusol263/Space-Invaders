@@ -51,6 +51,26 @@ namespace GameEngine
         m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
     }
 
+    void GameThread::CreateObjectAnimated(const std::string& id, const GameUtils::ObjectType& objType, 
+            const std::string& texturePath, const std::string& soundPath,
+            const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
+            const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& textureRow, const bool& isLoop) 
+    {
+        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
+        m_objects.back().SetupAnimatedAction(textureRow, isLoop);
+    }
+
+    void GameThread::DestroyObject(const GameUtils::Object& obj)
+    {
+        m_objects.erase(std::find(m_objects.begin(), m_objects.end(), obj));
+    }
+
+    void GameThread::DestroyObjectAnimated(const GameUtils::Object& obj, const int& textureRow)
+    {
+        auto objIterator = std::find(m_objects.begin(), m_objects.end(), obj);
+        objIterator->SetupAnimatedAction(textureRow, false, true);
+    }
+
     std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GameThread::GetKeys()
     {
         return m_keyMaps;
@@ -93,12 +113,17 @@ namespace GameEngine
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(1, 1, 
+        CreateArrayObject(2, 2, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
-                return GameUtils::Object(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
+                CreateObjectAnimated(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms);
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms, 1, 1, true);
+                auto objNew = std::find_if(m_objects.begin(), m_objects.end(), [this, id](const GameUtils::Object& obj)
+                {
+                    return obj.GetId() == id;
+                });
+                return *objNew;
             }
         );
 
@@ -166,7 +191,15 @@ namespace GameEngine
     void GameThread::ExecuteLogic()
     {
         for(auto index = 0; index < m_objects.size(); ++index)
+        {
+            if(m_objects[index].GetDestroy())
+            {
+                m_objects.erase(m_objects.begin() + index);
+                break;
+            }
             m_objects[index].StepLogic();
+            m_objects[index].DoAnimatedAction();
+        }
     }
 
     void GameThread::ClearScreen()
@@ -194,9 +227,9 @@ namespace GameEngine
             else if(m_progression == GameUtils::Progression::NORMAL_GAME)
             {
                 m_progression = GameUtils::Progression::BOSS_PHASE;
-                CreateObject("1", GameUtils::ObjectType::BOSS, "../resources/texture/animated-boss-ship.png", "", 
+                CreateObjectAnimated("1", GameUtils::ObjectType::BOSS, "../resources/texture/animated-boss-ship.png", "", 
                     std::bind(&LogicFunctions::BossStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)m_window->getDefaultView().getCenter().x, 0}),
-                    std::bind(&LogicFunctions::BossLogic, m_logicFunction, std::placeholders::_1), 326ms, 5);
+                    std::bind(&LogicFunctions::BossLogic, m_logicFunction, std::placeholders::_1), 164ms, 5, 1, true);
             }
 
         }
@@ -258,28 +291,6 @@ namespace GameEngine
         }
     }
 
-    void GameThread::DoAnimatedAction(GameUtils::Object& obj, const int& textureRow, const bool& isLoop, const std::function<void()>& actionFunc)
-    {
-        m_auxThreads.push_back(std::make_shared<std::thread>([this, &obj, isLoop, actionFunc, textureRow]()
-        {
-            auto& objSprite = obj.GetSprite();
-            auto currentRenderRect = objSprite.getTextureRect();
-            auto textureSize = objSprite.getTexture()->getSize();
-            auto renderRectSize = currentRenderRect.getSize();
-            auto frameQuantity = textureSize.x/renderRectSize.x;
-
-            for(auto index = 0; index < frameQuantity; ++index)
-            {
-                auto startTime = std::chrono::steady_clock::now();
-                objSprite.setTextureRect(sf::IntRect{sf::Vector2i{(int)(index * renderRectSize.x), textureRow * renderRectSize.y}, currentRenderRect.getSize()});
-                while(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime) <= (obj.GetAnimationFrametime()/(int)frameQuantity));
-            }
-            if(isLoop)
-                objSprite.setTextureRect(currentRenderRect);
-            actionFunc();
-        }));
-    }
-
     void GameThread::PlayAudioChannel(const GameUtils::SoundName& soundName)
     {
         m_generalSoundChannels[GameUtils::SoundNameToString(soundName)].second.play();
@@ -294,11 +305,10 @@ namespace GameEngine
         {
             for(auto column = 0; column < columns; ++column)
             {     
-                m_objects.push_back(objectBuilder(sf::Vector2i{
+                objectBuilder(sf::Vector2i{
                     (int)(std::floor(additiveRatio/2) + (row * additiveRatio)),  // X
                     (int)(windowSize.y * (0.1*(column + 1)))}, // Y
-                    std::to_string(row + column*rows))   
-                );
+                    std::to_string(row + column*rows));
             }
         }
     }
@@ -353,7 +363,7 @@ namespace GameEngine
                 m_lastFrameTime = std::chrono::steady_clock::now();
                 
             }
-            CleanupPointers();
+            // CleanupPointers();
 
         }
     }
