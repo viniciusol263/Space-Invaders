@@ -1,10 +1,12 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <functional>
 
 #include "LogicFunctions.h"
 #include "Input/Input.h"
 #include "GameThread/GameThread.h"
+#include "GameUtils/GameUtils.h"
 
 namespace GameEngine
 {
@@ -30,10 +32,11 @@ namespace GameEngine
         if(nextPosition < 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
 
+        auto ticks = static_cast<int>(obj.GetSprite().getPosition().y/projectileVelocityY);
         //Projectile instantiation
-        if(projectile && m_logicAssists[projectileMapIndex].auxVariables[0] == 0)
+        if(projectile && GameUtils::IsExpired(obj.GetAuxiliarTimeStamp(), ticks))
         {
-            m_logicAssists[projectileMapIndex].auxVariables[0] = 1;
+            obj.GetAuxiliarTimeStamp() = std::chrono::steady_clock::now();
             obj.SetupAnimatedAction(0, false);
             m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
                 std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
@@ -43,8 +46,9 @@ namespace GameEngine
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
-        m_logicAssists[enemyInstance] = DefaultAssists[GameUtils::ObjectType::ENEMY];
-        m_logicAssists[enemyProjectileMapIndex] = DefaultAssists[GameUtils::ObjectType::ENEMY_PROJECTILE];
+
+        obj.GetAuxiliarVars()["movementCounter"] = 0;
+        obj.GetAuxiliarVars()["baseVelocityX"] = 3;
 
         auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
         auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
@@ -57,12 +61,12 @@ namespace GameEngine
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
         
-        if(m_logicAssists[enemyInstance].auxVariables[0]++ == 30)
+        if(obj.GetAuxiliarVars()["movementCounter"]++ == 30)
         {
-            m_logicAssists[enemyInstance].auxVariables[1] = -m_logicAssists[enemyInstance].auxVariables[1];
-            m_logicAssists[enemyInstance].auxVariables[0] = 0;
+            obj.GetAuxiliarVars()["baseVelocityX"] = -obj.GetAuxiliarVars()["baseVelocityX"];
+            obj.GetAuxiliarVars()["movementCounter"] = 0;
         }
-        int nextPosition = obj.GetSprite().getPosition().x - m_logicAssists[enemyInstance].auxVariables[1];
+        int nextPosition = obj.GetSprite().getPosition().x - obj.GetAuxiliarVars()["baseVelocityX"];
         if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition = 0;
         if(nextPosition <= 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
@@ -73,9 +77,14 @@ namespace GameEngine
         std::mt19937 rng(dev());
         std::uniform_int_distribution<std::mt19937::result_type> dist(1,100);
 
-        if(dist(rng) >= 80 && m_logicAssists[enemyProjectileMapIndex].auxVariables[0] == 0)
+        auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+            return obj.GetType() == GameUtils::ObjectType::PLAYER;
+        })->GetSprite().getPosition();
+        auto ticks = static_cast<int>((playerPosition.y - position.y)/projectileVelocityY);
+
+        if(dist(rng) >= 60 && GameUtils::IsExpired(m_auxiliarTimestamp, ticks))
         {
-            m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 1;
+            m_auxiliarTimestamp = std::chrono::steady_clock::now();
             m_gameThread->CreateObject("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
                 std::bind(LogicFunctions::EnemyProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x,position.y}, enemyInstance),
                 std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 150ms, 1);
@@ -115,6 +124,18 @@ namespace GameEngine
 
     void LogicFunctions::EnemyProjectileSetup(GameUtils::Object& obj, const sf::Vector2i& initialPos, const std::pair<GameUtils::ObjectType, int>& assistId)
     {
+        auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+            return obj.GetType() == GameUtils::ObjectType::PLAYER;
+        })->GetSprite().getPosition();
+        auto ticks = static_cast<int>((playerPosition.y - initialPos.y)/projectileVelocityY);
+        auto projectileVelX = static_cast<int>(std::ceil((playerPosition.x - initialPos.x)/ticks));
+
+        obj.GetAuxiliarVars()["DIRECTION"] = 0;
+
+        if(static_cast<int>(playerPosition.x - initialPos.x) != 0)
+            obj.GetAuxiliarVars()["DIRECTION"] = projectileVelX;
+
+
         m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_SHOT); 
         obj.GetSprite().setPosition(initialPos.x, initialPos.y + obj.GetSprite().getGlobalBounds().getSize().y);
     }
@@ -125,12 +146,12 @@ namespace GameEngine
 
         if(currentPosition.y < m_gameThread->GetRenderWindow()->getDefaultView().getSize().y)
         {
-            if(m_logicAssists[enemyProjectileMapIndex].auxVariables[1] == 0)
-                obj.GetSprite().setPosition(currentPosition.x, currentPosition.y + 7);
+            // if(m_logicAssists[enemyProjectileMapIndex].auxVariables[1] == 0)
+                obj.GetSprite().setPosition(currentPosition.x + obj.GetAuxiliarVars()["DIRECTION"], currentPosition.y + projectileVelocityY);
         }
         else 
         {
-            m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 0;
+            // m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 0;
             DestroyObject(obj);
             return;
         }
@@ -202,7 +223,7 @@ namespace GameEngine
                 {
                     m_logicAssists[logicAssist].auxVariables[1] = 1;
                     obj.SetupAnimatedAction(textureRow, false, true, [this, logicAssist] {
-                        m_logicAssists[logicAssist].auxVariables[0] = 0;
+                        // m_logicAssists[logicAssist].auxVariables[0] = 0;
                         m_logicAssists[logicAssist].auxVariables[1] = 0;
                     });
 
@@ -212,7 +233,7 @@ namespace GameEngine
                     if(objRef.GetHitPoints() <= 0)
                     {
                         objRef.SetHitPoints(999);
-                        objRef.SetupAnimatedAction(textureRow, false, true, [this, logicAssist, objTypes]() {
+                        objRef.SetupAnimatedAction(textureRow, false, true, [this, objTypes]() {
                             for(auto objType : objTypes)
                                 if(objType == GameUtils::ObjectType::ENEMY)
                                     m_gameThread->SetScore(++m_gameThread->GetScore());

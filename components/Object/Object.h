@@ -4,6 +4,8 @@
 #include <functional>
 #include <chrono>
 #include <memory>
+#include <array>
+#include <map>
 
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
@@ -38,7 +40,13 @@ namespace GameUtils
     class Object 
     {
     public:
-        Object(const std::string& id = "UNKNOWN", const ObjectType& objType = ObjectType::PLAYER, const std::string& texturePath = "", const std::string& soundPath = "", const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1);
+        Object(const std::string& id = "UNKNOWN", 
+            const ObjectType& objType = ObjectType::PLAYER, 
+            const std::string& texturePath = "", 
+            const std::string& soundPath = "", 
+            const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, 
+            const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1);
 
         ~Object() = default;
 
@@ -67,6 +75,8 @@ namespace GameUtils
         void DoAnimatedAction();
         void StopAnimatedAction();
         bool GetDestroy();
+        std::map<std::string, int>& GetAuxiliarVars();
+        std::chrono::time_point<std::chrono::steady_clock>& GetAuxiliarTimeStamp();
 
     private:
         std::string m_id;
@@ -81,8 +91,12 @@ namespace GameUtils
         std::chrono::milliseconds m_animationFrametime;
         std::shared_ptr<std::tuple<std::chrono::milliseconds, std::chrono::steady_clock::time_point, bool>> m_timer;
         int m_hitPoints;
+        std::map<std::string, int> m_auxiliarVariables;
+        std::chrono::time_point<std::chrono::steady_clock> m_auxiliarTimestamp;
+
 
         //TODO Animation class?
+        // -------------------------------
         bool m_animRunning = false;
         sf::IntRect m_currentRenderRect;
         sf::Vector2u m_textureSize;
@@ -96,5 +110,6 @@ namespace GameUtils
         bool m_destroyOnFinish;
         bool m_destroy;
         std::function<void()> m_destroyAction;
+        // --------------------------------
     };
 }

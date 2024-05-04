@@ -134,6 +134,16 @@ namespace GameUtils
             return m_destroy;
         }
 
+        std::map<std::string, int>& Object::GetAuxiliarVars()
+        {
+            return m_auxiliarVariables;
+        }
+
+        std::chrono::time_point<std::chrono::steady_clock>& Object::GetAuxiliarTimeStamp()
+        {
+            return m_auxiliarTimestamp;
+        }
+
         int Object::GetHitPoints() const
         {
             return m_hitPoints;

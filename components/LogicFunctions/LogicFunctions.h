@@ -12,6 +12,7 @@
 
 namespace GameEngine
 {
+    constexpr int projectileVelocityY = 7;
     constexpr auto projectileMapIndex = std::make_pair(GameUtils::ObjectType::PROJECTILE, 0);
     constexpr auto enemyProjectileMapIndex = std::make_pair(GameUtils::ObjectType::ENEMY_PROJECTILE, 0);
     constexpr auto bossMapIndex = std::make_pair(GameUtils::ObjectType::BOSS, 0);
@@ -21,7 +22,10 @@ namespace GameEngine
         std::vector<int> auxVariables;
     };
 
-    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {{0, 3, 0}}}, {GameUtils::ObjectType::PROJECTILE, {{0,0}}}, {GameUtils::ObjectType::ENEMY_PROJECTILE, {{0,0,0}}}, {GameUtils::ObjectType::BOSS, {{0,6,0}}}};
+    static std::map<GameUtils::ObjectType, LogicAssist> DefaultAssists = {{GameUtils::ObjectType::ENEMY, {{0, 3, 0}}}, 
+        {GameUtils::ObjectType::PROJECTILE, {{0,0}}}, 
+        {GameUtils::ObjectType::ENEMY_PROJECTILE, {{0,0,0}}}, 
+        {GameUtils::ObjectType::BOSS, {{0,6,0}}}};
 
     class LogicFunctions 
     {
@@ -62,12 +66,11 @@ namespace GameEngine
         std::mutex m_mutex;
         std::shared_ptr<IGameThread> m_gameThread;
         std::map<std::pair<GameUtils::ObjectType, int>, LogicAssist> m_logicAssists;
-
+        std::chrono::time_point<std::chrono::steady_clock> m_auxiliarTimestamp;
         std::vector<GameUtils::Object> GetAllObjectByTypes(const std::vector<GameUtils::ObjectType>& types);
         GameUtils::Object& GetObjectReference(const GameUtils::Object& obj);
         void DestroyObject(const GameUtils::Object& obj);
         void ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow = 0);
-        
     };
 
 

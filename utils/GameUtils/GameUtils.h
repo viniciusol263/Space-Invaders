@@ -15,6 +15,7 @@ using namespace std::chrono_literals;
 
 namespace GameUtils
 {
+    constexpr auto globalFrametime = 16ms;
     enum class TextType : int
     {
         SCORE = 0,
@@ -30,4 +31,7 @@ namespace GameUtils
       RESPAWN,
       GAME_OVER  
     };
+    
+    bool IsExpired(const std::chrono::time_point<std::chrono::steady_clock>& auxiliarTimestamp, const int& ticks);
+  
 }

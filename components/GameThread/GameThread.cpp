@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "GameThread.h"
+#include "GameUtils/GameUtils.h"
 #include "SFML/Graphics.hpp"
 
 using namespace std::chrono_literals;
@@ -114,12 +115,12 @@ namespace GameEngine
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(3, 3, 
+        CreateArrayObject(4, 4, 
             [this](sf::Vector2i vecPos, std::string id) 
             {
                 return CreateObjectAnimated(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
                         std::bind(&LogicFunctions::EnemyStartup, m_logicFunction, std::placeholders::_1, vecPos),
-                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 332ms, 1, 1, true);
+                        std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 200ms, 1, 1, true);
             }
         );
 
@@ -158,9 +159,9 @@ namespace GameEngine
     {
         if(m_textSprites[GameUtils::TextType::PAUSE].getString() == "GAME OVER")
         {
-            for(auto& [_, key] : m_keyMaps)
+            for(auto& [scancode, key] : m_keyMaps)
             {
-                if(key->GetPressed())
+                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Space)
                 {
                     m_score = 0;
                     CleanupGame();
@@ -188,11 +189,6 @@ namespace GameEngine
     {
         for(auto index = 0; index < m_objects.size(); ++index)
         {
-            if(m_objects[index].GetDestroy())
-            {
-                m_objects.erase(m_objects.begin() + index);
-                break;
-            }
             m_objects[index].StepLogic();
             m_objects[index].DoAnimatedAction();
         }
@@ -316,7 +312,7 @@ namespace GameEngine
         while(m_window->isOpen())
         {
 
-            if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= 16ms)
+            if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= GameUtils::globalFrametime)
             {
                 ProgressionCheck();
                 ClearScreen();
@@ -330,6 +326,14 @@ namespace GameEngine
                 m_window->display(); 
                 m_lastFrameTime = std::chrono::steady_clock::now();
                 
+            }
+            for(auto index = 0; index < m_objects.size(); ++index)
+            {
+                if(m_objects[index].GetDestroy())
+                {
+                    m_objects.erase(m_objects.begin() + index);
+                    break;
+                }
             }
 
         }

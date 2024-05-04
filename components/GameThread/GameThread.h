@@ -56,7 +56,6 @@ namespace GameEngine
         int m_paused = 0;
         GameUtils::Progression m_progression;
 
-        
         sf::Event m_keyboardEvent;
 
         std::chrono::time_point<std::chrono::steady_clock> m_lastFrameTime;
