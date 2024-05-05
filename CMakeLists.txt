@@ -11,7 +11,7 @@ set(${PROJECT_NAME}_SRC
     utils/GameUtils/GameUtils.cpp
     images/icon.rc)
 
-add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SRC})
+add_executable(${PROJECT_NAME} WIN32 main.cpp ${${PROJECT_NAME}_SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
                             ${CMAKE_CURRENT_SOURCE_DIR}/components
