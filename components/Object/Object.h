@@ -46,7 +46,7 @@ namespace GameUtils
             const std::string& soundPath = "", 
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, 
             const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
-            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1);
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& scorePoint = 1);
 
         ~Object() = default;
 
@@ -61,6 +61,7 @@ namespace GameUtils
 
         std::string GetId() const;
         sf::Sprite& GetSprite();
+        std::shared_ptr<sf::Texture>& GetTexture();
         std::string GetDefaultSoundFilePath();
         sf::Sound& GetSound();
         ObjectType GetType() const;
@@ -75,6 +76,7 @@ namespace GameUtils
         void DoAnimatedAction();
         void StopAnimatedAction();
         bool GetDestroy();
+        bool GetDestroyOnFinish();
         std::map<std::string, int>& GetAuxiliarVars();
         std::chrono::time_point<std::chrono::steady_clock>& GetAuxiliarTimeStamp();
 
@@ -93,6 +95,7 @@ namespace GameUtils
         int m_hitPoints;
         std::map<std::string, int> m_auxiliarVariables;
         std::chrono::time_point<std::chrono::steady_clock> m_auxiliarTimestamp;
+        int m_scorePoint;
 
 
         //TODO Animation class?

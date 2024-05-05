@@ -46,18 +46,18 @@ namespace GameEngine
     GameUtils::Object& GameThread::CreateObject(const std::string& id , const GameUtils::ObjectType& objType, 
             const std::string& texturePath, const std::string& soundPath,
             const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
-            const std::chrono::milliseconds& animationFrametime, const int& hitPoints)
+            const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& scorePoint)
     {
-        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
+        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints, scorePoint);
         return m_objects.back();
     }
 
     GameUtils::Object& GameThread::CreateObjectAnimated(const std::string& id, const GameUtils::ObjectType& objType, 
             const std::string& texturePath, const std::string& soundPath,
             const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, 
-            const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& textureRow, const bool& isLoop) 
+            const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& scorePoint, const int& textureRow, const bool& isLoop) 
     {
-        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints);
+        m_objects.emplace_back(id, objType, texturePath, soundPath, startupHandler, logicHandler, animationFrametime, hitPoints, scorePoint);
         m_objects.back().SetupAnimatedAction(textureRow, isLoop);
         return m_objects.back();
     }
@@ -92,21 +92,23 @@ namespace GameEngine
         m_textSprites[GameUtils::TextType::HIGH_SCORE].setString("Highscore: " + std::to_string(m_highscore));
     }
 
-    void GameThread::InitializeState()
+    void GameThread::InitializeState(const bool& respawn)
     {
 
         auto windowSize = m_window->getSize();
-
         m_progression = GameUtils::Progression::NORMAL_GAME;
         m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
         m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
         m_textSprites[GameUtils::TextType::HIGH_SCORE] = {"Highscore: " + std::to_string(m_highscore), m_font, 24};
         m_textSprites[GameUtils::TextType::HIGH_SCORE].setPosition({m_window->getDefaultView().getCenter().x - ((std::string("Highscore: ").size()/2)*m_textSprites[GameUtils::TextType::HIGH_SCORE].getCharacterSize()),m_textSprites[GameUtils::TextType::HIGH_SCORE].getPosition().y});
+  
+        if(!respawn)
+        {
+            GenerateSoundChannels();
 
-        GenerateSoundChannels();
-
-        for(auto& key : GameUtils::Keyboard_Keys)
-            m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
+            for(auto& key : GameUtils::Keyboard_Keys)
+                m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
+        }
 
         //Putting Player ship on the rendering pipeline
         CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/multi-anim-ship.png", "",
@@ -115,7 +117,7 @@ namespace GameEngine
 
 
         //Putting array of Enemy ships in the rendering pipeline
-        CreateArrayObject(4, 4, 
+        CreateArrayObject(GameUtils::enemyQuantity[0], GameUtils::enemyQuantity[1], 
             [this](sf::Vector2i vecPos, std::string id) 
             {
                 return CreateObjectAnimated(id, GameUtils::ObjectType::ENEMY, "../resources/texture/animated-enemy-ship.png", "",
@@ -161,11 +163,11 @@ namespace GameEngine
         {
             for(auto& [scancode, key] : m_keyMaps)
             {
-                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Space)
+                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Enter)
                 {
                     m_score = 0;
                     CleanupGame();
-                    InitializeState();
+                    InitializeState(true);
                     break;
                 }
             }
@@ -189,6 +191,11 @@ namespace GameEngine
     {
         for(auto index = 0; index < m_objects.size(); ++index)
         {
+            if(m_objects[index].GetDestroy())
+            {
+                m_objects.erase(m_objects.begin() + index);
+                continue;
+            }
             m_objects[index].StepLogic();
             m_objects[index].DoAnimatedAction();
         }
@@ -211,9 +218,10 @@ namespace GameEngine
         {
             if(m_progression == GameUtils::Progression::BOSS_PHASE && bossLive == 0)
             {
+                PlayAudioChannel(GameUtils::SoundName::WIN);
                 m_progression = GameUtils::Progression::RESPAWN;
                 CleanupGame();
-                InitializeState();
+                InitializeState(true);
             }
 
             else if(m_progression == GameUtils::Progression::NORMAL_GAME)
@@ -221,12 +229,14 @@ namespace GameEngine
                 m_progression = GameUtils::Progression::BOSS_PHASE;
                 CreateObjectAnimated("1", GameUtils::ObjectType::BOSS, "../resources/texture/animated-boss-ship.png", "", 
                     std::bind(&LogicFunctions::BossStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)m_window->getDefaultView().getCenter().x, 0}),
-                    std::bind(&LogicFunctions::BossLogic, m_logicFunction, std::placeholders::_1), 164ms, 5, 1, true);
+                    std::bind(&LogicFunctions::BossLogic, m_logicFunction, std::placeholders::_1), 164ms, 5, 5, 1, true);
             }
 
         }
         if(playerLive == 0)
         {
+            if(m_paused != 2)
+                PlayAudioChannel(GameUtils::SoundName::LOSE);
             m_progression = GameUtils::Progression::GAME_OVER;
             BlockingTextScreen("GAME OVER");
             m_paused = 2;
@@ -240,7 +250,6 @@ namespace GameEngine
 
         m_objects.clear();
         m_textSprites.clear();
-        m_keyMaps.clear();
     }
 
 

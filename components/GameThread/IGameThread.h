@@ -24,11 +24,11 @@ namespace GameEngine
         virtual GameUtils::Object& CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
-            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) = 0;
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& scorePoint = 1) = 0;
         virtual GameUtils::Object& CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
-            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) = 0;
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& scorePoint = 1, const int& textureRow = 0, const bool& isLoop = true) = 0;
         virtual void DestroyObject(const GameUtils::Object& obj) = 0;
         virtual void DestroyObjectAnimated(const GameUtils::Object& obj, const int& textureRow) = 0;
         virtual std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() = 0;
@@ -38,7 +38,7 @@ namespace GameEngine
 
         virtual void GameWatcherThread() = 0;
     private:
-        virtual void InitializeState() = 0;
+        virtual void InitializeState(const bool& respawn = false) = 0;
         virtual void CaptureKeyInput() = 0;
         virtual void PauseLogic() = 0;
         virtual void ExecuteLogic() = 0;

@@ -5,6 +5,7 @@
 #include <map>
 #include <utility>
 #include <mutex>
+#include <vector>
 
 #include "Object/Object.h"
 #include "Sound/Sound.h"
@@ -67,10 +68,16 @@ namespace GameEngine
         std::shared_ptr<IGameThread> m_gameThread;
         std::map<std::pair<GameUtils::ObjectType, int>, LogicAssist> m_logicAssists;
         std::chrono::time_point<std::chrono::steady_clock> m_auxiliarTimestamp;
+        std::vector<int> m_randomPos;
+        int m_enemyQnt;
+
         std::vector<GameUtils::Object> GetAllObjectByTypes(const std::vector<GameUtils::ObjectType>& types);
         GameUtils::Object& GetObjectReference(const GameUtils::Object& obj);
         void DestroyObject(const GameUtils::Object& obj);
-        void ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow = 0);
+        bool ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow = 0);
+        void RandomShuffler(std::vector<int>& vector, int originalSize);
+        void PixelColorSwap(sf::Texture& texture, const std::vector<uint32_t>& oldColors, const int& newColor = -1, const int& cycle = 0);
+        uint32_t ColorCycling(const uint32_t& color, const int& cycle);
     };
 
 

@@ -6,11 +6,12 @@
 
 namespace GameUtils
 {   
-    constexpr std::array<sf::Keyboard::Scancode,4> Keyboard_Keys = {
+    constexpr std::array<sf::Keyboard::Scancode,5> Keyboard_Keys = {
         sf::Keyboard::Scancode::A, 
         sf::Keyboard::Scancode::D, 
         sf::Keyboard::Scancode::Space,
-        sf::Keyboard::Scancode::P
+        sf::Keyboard::Scancode::P,
+        sf::Keyboard::Scancode::Enter
     };
 
     class Input

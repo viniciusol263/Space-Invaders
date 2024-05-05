@@ -2,8 +2,8 @@
 
 namespace GameUtils
 {
-    Object::Object(const std::string& id, const ObjectType& objType, const std::string& texturePath, const std::string& soundPath, const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, const std::chrono::milliseconds& animationFrametime, const int& hitPoints) : 
-            m_id(id), m_objType(objType), m_soundBufferPath(soundPath), m_startupHandler(startupHandler), m_logicHandler(logicHandler), m_animationFrametime(animationFrametime), m_hitPoints(hitPoints)
+    Object::Object(const std::string& id, const ObjectType& objType, const std::string& texturePath, const std::string& soundPath, const std::function<void(GameUtils::Object&)>& startupHandler, const std::function<void(GameUtils::Object&)>& logicHandler, const std::chrono::milliseconds& animationFrametime, const int& hitPoints, const int& scorePoint) : 
+            m_id(id), m_objType(objType), m_soundBufferPath(soundPath), m_startupHandler(startupHandler), m_logicHandler(logicHandler), m_animationFrametime(animationFrametime), m_hitPoints(hitPoints), m_scorePoint(scorePoint)
         {
             if(m_id != "UNKNOWN")
             {             
@@ -25,7 +25,9 @@ namespace GameUtils
                 m_renderRectSize = m_currentRenderRect.getSize();
                 m_frameQuantity = m_textureSize.x/m_renderRectSize.x;
                 m_animationHead = 0;
+                m_destroyOnFinish = false;
                 m_destroy = false;
+                m_auxiliarTimestamp = std::chrono::steady_clock::now();
                 m_startupHandler(*this);
             }
         }
@@ -39,6 +41,11 @@ namespace GameUtils
         sf::Sprite& Object::GetSprite() 
         {
             return m_objSprite;
+        }
+
+        std::shared_ptr<sf::Texture>& Object::GetTexture()
+        {
+            return m_objTexture;
         }
 
         std::string Object::GetDefaultSoundFilePath()
@@ -133,6 +140,12 @@ namespace GameUtils
         {
             return m_destroy;
         }
+
+        bool Object::GetDestroyOnFinish()
+        {
+            return m_destroyOnFinish;
+        }
+
 
         std::map<std::string, int>& Object::GetAuxiliarVars()
         {

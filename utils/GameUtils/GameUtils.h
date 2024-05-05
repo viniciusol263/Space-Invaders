@@ -15,6 +15,7 @@ using namespace std::chrono_literals;
 
 namespace GameUtils
 {
+    constexpr std::array<int,2> enemyQuantity = {5,5};
     constexpr auto globalFrametime = 16ms;
     enum class TextType : int
     {

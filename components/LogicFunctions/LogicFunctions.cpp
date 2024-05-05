@@ -17,7 +17,6 @@ namespace GameEngine
         auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
  
         obj.GetSprite().setPosition(posX, posY);
-        m_logicAssists[projectileMapIndex] = DefaultAssists[GameUtils::ObjectType::PROJECTILE];
     }
 
     void LogicFunctions::PlayerLogic(GameUtils::Object& obj)
@@ -32,7 +31,7 @@ namespace GameEngine
         if(nextPosition < 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
 
-        auto ticks = static_cast<int>(obj.GetSprite().getPosition().y/projectileVelocityY);
+        auto ticks = static_cast<int>(obj.GetSprite().getPosition().y/(2*projectileVelocityY));
         //Projectile instantiation
         if(projectile && GameUtils::IsExpired(obj.GetAuxiliarTimeStamp(), ticks))
         {
@@ -45,11 +44,16 @@ namespace GameEngine
     }
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
     {
-        auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
+        auto colorSeparator = stoi(obj.GetId()) / GameUtils::enemyQuantity[0];
+        std::vector<uint32_t> colors({0xAC3232FF,0x822929FF});
+        PixelColorSwap(*obj.GetTexture(), colors, -1, colorSeparator);
 
-        obj.GetAuxiliarVars()["movementCounter"] = 0;
-        obj.GetAuxiliarVars()["baseVelocityX"] = 3;
+        obj.GetAuxiliarVars()["movementCounter"] = 0; // Orientation X-Axis counter
+        obj.GetAuxiliarVars()["baseVelocityX"] = 3; // Base velocity of the enemy ship on X-Axis
 
+        m_enemyQnt = GameUtils::enemyQuantity[0]*GameUtils::enemyQuantity[1];
+        for(auto index = 0; index < m_enemyQnt; ++index)
+            m_randomPos.push_back(index);
         auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
         auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
  
@@ -60,30 +64,29 @@ namespace GameEngine
     void LogicFunctions::EnemyLogic(GameUtils::Object& obj)
     {
         auto enemyInstance = std::make_pair(GameUtils::ObjectType::ENEMY, stoi(obj.GetId()));
-        
+
         if(obj.GetAuxiliarVars()["movementCounter"]++ == 30)
         {
             obj.GetAuxiliarVars()["baseVelocityX"] = -obj.GetAuxiliarVars()["baseVelocityX"];
             obj.GetAuxiliarVars()["movementCounter"] = 0;
         }
         int nextPosition = obj.GetSprite().getPosition().x - obj.GetAuxiliarVars()["baseVelocityX"];
-        if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition = 0;
-        if(nextPosition <= 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
+        if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition -= obj.GetAuxiliarVars()["baseVelocityX"];
+        if(nextPosition <= 0) nextPosition += obj.GetAuxiliarVars()["baseVelocityX"];
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
 
         auto position = obj.GetSprite().getPosition();
 
-        std::random_device dev;
-        std::mt19937 rng(dev());
-        std::uniform_int_distribution<std::mt19937::result_type> dist(1,100);
+        RandomShuffler(m_randomPos, m_enemyQnt);
 
         auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         })->GetSprite().getPosition();
-        auto ticks = static_cast<int>((playerPosition.y - position.y)/projectileVelocityY);
+        auto ticks = static_cast<int>((playerPosition.y - position.y)/(projectileVelocityY));
 
-        if(dist(rng) >= 60 && GameUtils::IsExpired(m_auxiliarTimestamp, ticks))
+        if(stoi(obj.GetId()) == m_randomPos.back() && GameUtils::IsExpired(m_auxiliarTimestamp, ticks))
         {
+            m_randomPos.pop_back();
             m_auxiliarTimestamp = std::chrono::steady_clock::now();
             m_gameThread->CreateObject("1", GameUtils::ObjectType::ENEMY_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "../resources/sfx/enemy-shot.wav",
                 std::bind(LogicFunctions::EnemyProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x,position.y}, enemyInstance),
@@ -99,6 +102,7 @@ namespace GameEngine
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         });
 
+        obj.GetAuxiliarVars()["pinMovement"] = 0;
         m_gameThread->PlayAudioChannel(GameUtils::SoundName::PLAYER_SHOT); 
         obj.GetSprite().setPosition(playerPosition->GetSprite().getPosition().x, playerPosition->GetSprite().getPosition().y - obj.GetSprite().getGlobalBounds().getSize().y);
     }
@@ -109,12 +113,11 @@ namespace GameEngine
 
         if(currentPosition.y >= 0)
         {
-            if(m_logicAssists[projectileMapIndex].auxVariables[1] == 0)
-                obj.GetSprite().setPosition(currentPosition.x, currentPosition.y - 7);
+            if(obj.GetAuxiliarVars()["pinMovement"] == 0)
+                obj.GetSprite().setPosition(currentPosition.x, currentPosition.y - projectileVelocityY);
         }
         else 
         {
-            m_logicAssists[projectileMapIndex].auxVariables[0] = 0;
             DestroyObject(obj);
             return;
         }
@@ -131,6 +134,7 @@ namespace GameEngine
         auto projectileVelX = static_cast<int>(std::ceil((playerPosition.x - initialPos.x)/ticks));
 
         obj.GetAuxiliarVars()["DIRECTION"] = 0;
+        obj.GetAuxiliarVars()["pinMovement"] = 0;
 
         if(static_cast<int>(playerPosition.x - initialPos.x) != 0)
             obj.GetAuxiliarVars()["DIRECTION"] = projectileVelX;
@@ -146,12 +150,11 @@ namespace GameEngine
 
         if(currentPosition.y < m_gameThread->GetRenderWindow()->getDefaultView().getSize().y)
         {
-            // if(m_logicAssists[enemyProjectileMapIndex].auxVariables[1] == 0)
+            if(obj.GetAuxiliarVars()["pinMovement"] == 0)
                 obj.GetSprite().setPosition(currentPosition.x + obj.GetAuxiliarVars()["DIRECTION"], currentPosition.y + projectileVelocityY);
         }
         else 
         {
-            // m_logicAssists[enemyProjectileMapIndex].auxVariables[0] = 0;
             DestroyObject(obj);
             return;
         }
@@ -205,7 +208,7 @@ namespace GameEngine
         m_gameThread->GetObjects().erase(std::find(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), obj));
     }
 
-    void LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow)
+    bool LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow)
     {
         auto currentPosition = obj.GetSprite().getPosition();
         auto enemyObjs = GetAllObjectByTypes(objTypes);
@@ -219,12 +222,11 @@ namespace GameEngine
                 auto r = (int)enemyObjs[index].GetSprite().getTextureRect().getSize().x;
 
 
-                if(std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2)) 
+                if(!obj.GetDestroyOnFinish() && (std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2))) 
                 {
-                    m_logicAssists[logicAssist].auxVariables[1] = 1;
-                    obj.SetupAnimatedAction(textureRow, false, true, [this, logicAssist] {
-                        // m_logicAssists[logicAssist].auxVariables[0] = 0;
-                        m_logicAssists[logicAssist].auxVariables[1] = 0;
+                    obj.GetAuxiliarVars()["pinMovement"] = 1;
+                    obj.SetupAnimatedAction(textureRow, false, true, [this, &obj] {
+                        obj.GetAuxiliarVars()["pinMovement"] = 0;
                     });
 
                     auto& objRef = GetObjectReference(enemyObjs[index]);
@@ -233,15 +235,83 @@ namespace GameEngine
                     if(objRef.GetHitPoints() <= 0)
                     {
                         objRef.SetHitPoints(999);
-                        objRef.SetupAnimatedAction(textureRow, false, true, [this, objTypes]() {
+                        objRef.SetupAnimatedAction(textureRow, false, true, [this, objTypes, objRef]() {
                             for(auto objType : objTypes)
                                 if(objType == GameUtils::ObjectType::ENEMY)
                                     m_gameThread->SetScore(++m_gameThread->GetScore());
                         });
                     }
-                    return;
+                    return true;
                 }   
             }
         }
+        return false;
     }
+
+    void LogicFunctions::RandomShuffler(std::vector<int>& vector, int originalSize)
+    {
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        if(vector.size() == 0)
+        {
+            for(auto index = 0; index < originalSize; ++index)
+                vector.push_back(index);
+        }
+        std::shuffle(vector.begin(), vector.end(), rng);
+    }
+
+    void LogicFunctions::PixelColorSwap(sf::Texture& texture, const std::vector<uint32_t>& oldColors, const int& newColor, const int& cycle)
+    {
+        auto image = texture.copyToImage();
+        for(int indexY = 0; indexY < image.getSize().y; ++indexY)
+        {
+            for(int indexX = 0; indexX < image.getSize().x; ++indexX)
+            {
+                auto pixelColor = image.getPixel(indexX, indexY).toInteger();
+                auto pixelIter = std::find_if(oldColors.begin(), oldColors.end(), [this, pixelColor](const int& color)
+                {
+                    return color == pixelColor;
+                });
+                if(pixelIter != oldColors.end())
+                {
+                    if(newColor == -1)
+                    {
+                        image.setPixel(indexX, indexY, sf::Color(ColorCycling(*pixelIter, cycle)));
+                    }
+                    else
+                        image.setPixel(indexX, indexY, sf::Color(newColor));
+
+                }
+            }
+        }
+        texture.loadFromImage(image);
+    }
+
+    uint32_t LogicFunctions::ColorCycling(const uint32_t& color, const int& cycle)
+    {
+        union {
+            struct {
+                unsigned B : 8;
+                unsigned G : 8;
+                unsigned R : 8;
+            };
+            uint32_t hexColor;
+        } primaryColor;
+
+        primaryColor.hexColor = color;
+        std::array<uint8_t, 3> primaryArray = {primaryColor.R, primaryColor.G, primaryColor.B};
+
+        for(auto index = 0; index <= cycle; ++index)
+        {
+            std::swap(primaryArray[1], primaryArray[0]);
+            std::swap(primaryArray[2], primaryArray[1]);
+        }
+        primaryColor.R = primaryArray[0];
+        primaryColor.G = primaryArray[1];
+        primaryColor.B = primaryArray[2];
+        return primaryColor.hexColor;
+    }
+
+
+
 }

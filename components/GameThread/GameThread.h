@@ -26,12 +26,12 @@ namespace GameEngine
         GameUtils::Object& CreateObject(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
-            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1) override;
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& scorePoint = 1) override;
         std::unordered_map<sf::Keyboard::Scancode, std::shared_ptr<GameUtils::Input>>& GetKeys() override;
         GameUtils::Object& CreateObjectAnimated(const std::string& id = "UNKNOWN", const GameUtils::ObjectType& objType = GameUtils::ObjectType::PLAYER, 
             const std::string& texturePath = "", const std::string& soundPath = "",
             const std::function<void(GameUtils::Object&)>& startupHandler = [](GameUtils::Object&){}, const std::function<void(GameUtils::Object&)>& logicHandler = [](GameUtils::Object&){}, 
-            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& textureRow = 0, const bool& isLoop = true) override;
+            const std::chrono::milliseconds& animationFrametime = 166ms, const int& hitPoints = 1, const int& scorePoint = 1, const int& textureRow = 0, const bool& isLoop = true) override;
         void DestroyObject(const GameUtils::Object& obj) override;
         void DestroyObjectAnimated(const GameUtils::Object& obj, const int& textureRow) override;
         int& GetScore() override;
@@ -60,7 +60,7 @@ namespace GameEngine
 
         std::chrono::time_point<std::chrono::steady_clock> m_lastFrameTime;
 
-        void InitializeState() override;
+        void InitializeState(const bool& respawn = false) override;
         void CaptureKeyInput() override;
         void PauseLogic() override;
         void ExecuteLogic() override;
