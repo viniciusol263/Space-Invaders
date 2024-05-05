@@ -16,7 +16,7 @@
 
 - [X] - More rows of enemies.
 
-- [X] - Enemies shoots projectiles.
+- [X] - Enemies shoots directioned projectiles.
 
 - [X] - Menu and Pause.
 
@@ -28,7 +28,8 @@
 - Button **A** for moving the ship left.
 - Button **D** for moving the ship right.
 - Button **Space** for shooting.
-- Butotn **P** for pausing the game.
+- Button **P** for pausing the game.
+- Button **Enter** for respawning from GAME OVER screen.
 
 ### Images:
 ![](/images/screenshoot.png)
