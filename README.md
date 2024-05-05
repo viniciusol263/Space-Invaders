@@ -32,4 +32,4 @@
 - Button **Enter** for respawning from GAME OVER screen.
 
 ### Images:
-![](/images/screenshoot.png)
+<!-- ![](/images/screenshoot.png) -->
