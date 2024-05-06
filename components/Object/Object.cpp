@@ -7,6 +7,14 @@ namespace GameUtils
         {
             if(m_id != "UNKNOWN")
             {             
+                std::map<ObjectType, sf::IntRect> hitBoxMap = {
+                    {ObjectType::PLAYER, sf::IntRect{{5,5},{25,25}}},
+                    {ObjectType::ENEMY, sf::IntRect{{4,5},{22,21}}},
+                    {ObjectType::PROJECTILE, sf::IntRect{{10,12}, {11, 8}}},
+                    {ObjectType::ENEMY_PROJECTILE, sf::IntRect{{10,12}, {11, 8}}},
+                    {ObjectType::BOSS, sf::IntRect{{11,20}, {105, 84}}},
+                    {ObjectType::BOSS_PROJECTILE, sf::IntRect{{7,8}, {18, 15}}},
+                };
                 m_objTexture = std::make_shared<sf::Texture>();
                 m_objTexture->loadFromFile(texturePath);
                 m_objSprite.setTexture(*m_objTexture);
@@ -27,8 +35,9 @@ namespace GameUtils
                 m_animationHead = 0;
                 m_destroyOnFinish = false;
                 m_destroy = false;
-                m_auxiliarTimestamp = std::chrono::steady_clock::now();
+                m_auxiliarTimestamps["Primary"] = std::chrono::steady_clock::now();
                 m_startupHandler(*this);
+                m_hitBox = hitBoxMap[objType];
             }
         }
 
@@ -96,7 +105,7 @@ namespace GameUtils
             return false;
         }
 
-        void Object::SetupAnimatedAction(const int& textureRow, const bool& isLoop, const bool& destroyOnFinish, const std::function<void()>& destroyAction)
+        void Object::SetupAnimatedAction(const int& textureRow, const bool& isLoop, const bool& destroyOnFinish, const bool& onFinishRollback, const int& rollbackTextureRow, const std::function<void()>& destroyAction)
         {
             m_textureRow = textureRow;
             m_isLoop = isLoop;
@@ -104,7 +113,9 @@ namespace GameUtils
             m_animationStartTime = std::chrono::steady_clock::now();
             m_animationStep = 1;
             m_destroyOnFinish = destroyOnFinish;
+            m_onFinishRollback = onFinishRollback;
             m_destroyAction = destroyAction;
+            m_previousTextureRow = rollbackTextureRow;
         }
 
         void Object::DoAnimatedAction()
@@ -124,6 +135,8 @@ namespace GameUtils
                                 m_destroy = true;
                                 m_destroyAction();
                             }
+                            if(m_onFinishRollback)
+                                SetupAnimatedAction(m_previousTextureRow, true);
                         }
                     }
                     m_animationStartTime = std::chrono::steady_clock::now();
@@ -146,15 +159,19 @@ namespace GameUtils
             return m_destroyOnFinish;
         }
 
+        sf::IntRect Object::GetHitBox()
+        {
+            return m_hitBox;
+        }
 
         std::map<std::string, int>& Object::GetAuxiliarVars()
         {
             return m_auxiliarVariables;
         }
 
-        std::chrono::time_point<std::chrono::steady_clock>& Object::GetAuxiliarTimeStamp()
+        std::map<std::string, std::chrono::time_point<std::chrono::steady_clock>>& Object::GetAuxiliarTimeStamp()
         {
-            return m_auxiliarTimestamp;
+            return m_auxiliarTimestamps;
         }
 
         int Object::GetHitPoints() const

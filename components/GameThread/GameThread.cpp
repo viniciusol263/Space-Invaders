@@ -95,7 +95,7 @@ namespace GameEngine
     void GameThread::InitializeState(const bool& respawn)
     {
 
-        auto windowSize = m_window->getSize();
+        auto windowSize = m_window->getDefaultView().getSize();
         m_progression = GameUtils::Progression::NORMAL_GAME;
         m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
         m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
@@ -113,7 +113,7 @@ namespace GameEngine
         //Putting Player ship on the rendering pipeline
         CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/multi-anim-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
-            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 100ms);
+            std::bind(&LogicFunctions::PlayerLogic, m_logicFunction, std::placeholders::_1), 200ms, 1, 1);
 
 
         //Putting array of Enemy ships in the rendering pipeline

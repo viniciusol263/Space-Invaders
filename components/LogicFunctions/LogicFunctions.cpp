@@ -26,16 +26,16 @@ namespace GameEngine
         auto right = (m_gameThread->GetKeys()[sf::Keyboard::Scancode::D]->GetPressed()) ? 1 : 0;
         auto projectile = m_gameThread->GetKeys()[sf::Keyboard::Scancode::Space]->GetPressed();
 
-        auto nextPosition = obj.GetSprite().getPosition().x + ((left + right) * 10);
-        if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition = 0;
-        if(nextPosition < 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
+        auto nextPosition = obj.GetSprite().getPosition().x + ((left + right) * playerShipVelocityX);
+        if(nextPosition > (m_gameThread->GetRenderWindow()->getSize().x - obj.GetSprite().getLocalBounds().getSize().x)) nextPosition -= playerShipVelocityX;
+        if(nextPosition < 0) nextPosition += playerShipVelocityX;
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
 
         auto ticks = static_cast<int>(obj.GetSprite().getPosition().y/(2*projectileVelocityY));
         //Projectile instantiation
-        if(projectile && GameUtils::IsExpired(obj.GetAuxiliarTimeStamp(), ticks))
+        if(projectile && GameUtils::IsExpired(obj.GetAuxiliarTimeStamp()["Primary"], ticks))
         {
-            obj.GetAuxiliarTimeStamp() = std::chrono::steady_clock::now();
+            obj.GetAuxiliarTimeStamp()["Primary"] = std::chrono::steady_clock::now();
             obj.SetupAnimatedAction(0, false);
             m_gameThread->CreateObject("1", GameUtils::ObjectType::PROJECTILE, "../resources/texture/animated-projectile.png", "../resources/sfx/player-shot.wav",
                 std::bind(LogicFunctions::ProjectileSetup, this, std::placeholders::_1),
@@ -82,7 +82,7 @@ namespace GameEngine
         auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         })->GetSprite().getPosition();
-        auto ticks = static_cast<int>((playerPosition.y - position.y)/(projectileVelocityY));
+        auto ticks = static_cast<int>((playerPosition.y - position.y)/(2*projectileVelocityY));
 
         if(stoi(obj.GetId()) == m_randomPos.back() && GameUtils::IsExpired(m_auxiliarTimestamp, ticks))
         {
@@ -122,25 +122,33 @@ namespace GameEngine
             return;
         }
 
-        ObjectCollison(obj, {GameUtils::ObjectType::ENEMY, GameUtils::ObjectType::BOSS}, projectileMapIndex, GameUtils::SoundName::ENEMY_DEATH);
+        ObjectCollison(obj, {GameUtils::ObjectType::ENEMY, GameUtils::ObjectType::BOSS}, GameUtils::SoundName::ENEMY_DEATH);
     }
 
     void LogicFunctions::EnemyProjectileSetup(GameUtils::Object& obj, const sf::Vector2i& initialPos, const std::pair<GameUtils::ObjectType, int>& assistId)
     {
+        if(obj.GetType() == GameUtils::ObjectType::BOSS_PROJECTILE)
+        {
+            std::vector<uint32_t> colors({0xAC3232FF,0xDF7126FF,0xFBF236FF});
+            PixelColorSwap(*obj.GetTexture(), colors, -1, 0);
+        }
+
         auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
             return obj.GetType() == GameUtils::ObjectType::PLAYER;
         })->GetSprite().getPosition();
         auto ticks = static_cast<int>((playerPosition.y - initialPos.y)/projectileVelocityY);
         auto projectileVelX = static_cast<int>(std::ceil((playerPosition.x - initialPos.x)/ticks));
 
-        obj.GetAuxiliarVars()["DIRECTION"] = 0;
+        obj.GetAuxiliarVars()["Direction"] = 0;
         obj.GetAuxiliarVars()["pinMovement"] = 0;
-
-        if(static_cast<int>(playerPosition.x - initialPos.x) != 0)
-            obj.GetAuxiliarVars()["DIRECTION"] = projectileVelX;
-
+        obj.GetAuxiliarVars()["mutableProjectileVelocity"] = projectileVelocityY;
+        obj.GetAuxiliarVars()["maximumSpacement"] = playerPosition.y - initialPos.y;
 
         m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_SHOT); 
+        if(static_cast<int>(playerPosition.x - initialPos.x) != 0)
+            obj.GetAuxiliarVars()["Direction"] = projectileVelX;
+
+
         obj.GetSprite().setPosition(initialPos.x, initialPos.y + obj.GetSprite().getGlobalBounds().getSize().y);
     }
 
@@ -148,10 +156,21 @@ namespace GameEngine
     {
         auto currentPosition = obj.GetSprite().getPosition();
 
+        if(obj.GetType() == GameUtils::ObjectType::BOSS_PROJECTILE)
+        {
+            obj.GetAuxiliarVars()["mutableProjectileVelocity"] = minorProjectileVelocityBossY;
+            auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+                    return obj.GetType() == GameUtils::ObjectType::PLAYER;
+                })->GetSprite().getPosition();
+            if(std::abs(static_cast<int>(playerPosition.y - currentPosition.y)) <= (obj.GetAuxiliarVars()["maximumSpacement"]/7))
+            {
+                obj.GetAuxiliarVars()["mutableProjectileVelocity"] = 3;
+            }
+        }
         if(currentPosition.y < m_gameThread->GetRenderWindow()->getDefaultView().getSize().y)
         {
             if(obj.GetAuxiliarVars()["pinMovement"] == 0)
-                obj.GetSprite().setPosition(currentPosition.x + obj.GetAuxiliarVars()["DIRECTION"], currentPosition.y + projectileVelocityY);
+                obj.GetSprite().setPosition(currentPosition.x + obj.GetAuxiliarVars()["Direction"], currentPosition.y + obj.GetAuxiliarVars()["mutableProjectileVelocity"]);
         }
         else 
         {
@@ -159,7 +178,7 @@ namespace GameEngine
             return;
         }
 
-        ObjectCollison(obj, {GameUtils::ObjectType::PLAYER}, enemyProjectileMapIndex, GameUtils::SoundName::ENEMY_DEATH, 1);
+        ObjectCollison(obj, {GameUtils::ObjectType::PLAYER}, GameUtils::SoundName::ENEMY_DEATH, 1);
     }
     
     void LogicFunctions::BossStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
@@ -167,8 +186,14 @@ namespace GameEngine
         auto posX = std::abs(initialPos.x - obj.GetSprite().getTextureRect().getSize().x/2);
         auto posY = std::abs(initialPos.y - obj.GetSprite().getTextureRect().getSize().y/2);
  
+        obj.GetAuxiliarTimeStamp()["Second"] = std::chrono::steady_clock::now();
+        obj.GetAuxiliarVars()["Direction"] = 6;
+        obj.GetAuxiliarVars()["BulletPosition"] = 0;
+        obj.GetAuxiliarVars()["0"] = 0;
+        obj.GetAuxiliarVars()["1"] = -obj.GetSprite().getLocalBounds().getSize().x/2;
+        obj.GetAuxiliarVars()["2"] = obj.GetSprite().getLocalBounds().getSize().x/2;
+
         obj.GetSprite().setPosition(posX, posY);
-        m_logicAssists[bossMapIndex] = DefaultAssists[GameUtils::ObjectType::BOSS];
         obj.SetTimer(obj.GetAnimationFrametime(), true);
     }
 
@@ -178,12 +203,90 @@ namespace GameEngine
 
         if(obj.GetSprite().getPosition().x <= (movementRange - (obj.GetSprite().getTextureRect().getSize().x/2)) || obj.GetSprite().getPosition().x >= (3*movementRange))
         {
-            m_logicAssists[bossMapIndex].auxVariables[1] = -m_logicAssists[bossMapIndex].auxVariables[1];
+            obj.GetAuxiliarVars()["Direction"] = -obj.GetAuxiliarVars()["Direction"];
         }
-        int nextPosition = obj.GetSprite().getPosition().x - m_logicAssists[bossMapIndex].auxVariables[1];
+        int nextPosition = obj.GetSprite().getPosition().x - obj.GetAuxiliarVars()["Direction"];
         if(nextPosition > m_gameThread->GetRenderWindow()->getSize().x) nextPosition = 0;
         if(nextPosition <= 0) nextPosition = m_gameThread->GetRenderWindow()->getSize().x;
         obj.GetSprite().setPosition(nextPosition, obj.GetSprite().getPosition().y);
+
+        auto position = obj.GetSprite().getPosition();
+
+        auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+            return obj.GetType() == GameUtils::ObjectType::PLAYER;
+        })->GetSprite().getPosition();
+        auto ticks = static_cast<int>((playerPosition.y - position.y)/(2*projectileVelocityY));
+        auto minorTicks = ticks / 2;
+        if(GameUtils::IsExpired(obj.GetAuxiliarTimeStamp()["Second"], minorTicks))
+        {
+            obj.SetupAnimatedAction(2, false, false, true, 1);
+            obj.GetAuxiliarTimeStamp()["Second"] = std::chrono::steady_clock::now();
+            m_gameThread->CreateObject("2", GameUtils::ObjectType::BOSS_PROJECTILE, "../resources/texture/animated-enemy-projectile.png", "",
+                std::bind(LogicFunctions::EnemyProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x + (obj.GetSprite().getLocalBounds().getSize().x/2) + obj.GetAuxiliarVars()[std::to_string(obj.GetAuxiliarVars()["BulletPosition"])], position.y + (obj.GetSprite().getLocalBounds().getSize().y/2)}, std::make_pair<GameUtils::ObjectType,int>(GameUtils::ObjectType::UNKNOWN,0)),
+                std::bind(LogicFunctions::EnemyProjectileLogic, this, std::placeholders::_1), 200ms, 1);
+            obj.GetAuxiliarVars()["BulletPosition"] = (obj.GetAuxiliarVars()["BulletPosition"] + 1) % 3;
+        }
+        if(GameUtils::IsExpired(obj.GetAuxiliarTimeStamp()["Primary"], ticks))
+        {
+            obj.SetupAnimatedAction(2, false, false, true, 1);
+            obj.GetAuxiliarTimeStamp()["Primary"] = std::chrono::steady_clock::now();
+            m_gameThread->CreateObject("1", GameUtils::ObjectType::BOSS_PROJECTILE, "../resources/texture/animated-boss-projectile.png", "../resources/sfx/enemy-shot.wav",
+                std::bind(LogicFunctions::BossProjectileSetup, this, std::placeholders::_1, sf::Vector2i{position.x + (obj.GetSprite().getLocalBounds().getSize().x/2), position.y + (obj.GetSprite().getLocalBounds().getSize().y/2)}),
+                std::bind(LogicFunctions::BossProjectileLogic, this, std::placeholders::_1), 200ms, 1);
+        }
+
+    }
+
+    void LogicFunctions::BossProjectileSetup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
+    {
+        auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+                return obj.GetType() == GameUtils::ObjectType::PLAYER;
+            })->GetSprite().getPosition();
+
+        obj.GetAuxiliarVars()["Direction"] = 0;
+        obj.GetAuxiliarVars()["pinMovement"] = 0;
+        obj.GetAuxiliarVars()["maximumSpacement"] = playerPosition.y - initialPos.y;
+
+        m_gameThread->PlayAudioChannel(GameUtils::SoundName::ENEMY_SHOT); 
+        obj.GetSprite().setPosition(initialPos.x, initialPos.y);
+    }
+
+    void LogicFunctions::BossProjectileLogic(GameUtils::Object& obj)
+    {
+        auto currentPosition = obj.GetSprite().getPosition();
+
+        if(currentPosition.y < m_gameThread->GetRenderWindow()->getDefaultView().getSize().y)
+        {
+            if(obj.GetAuxiliarVars()["pinMovement"] == 0)
+            {
+                std::random_device dev;
+                std::mt19937 rng(dev());
+                std::uniform_int_distribution<int> deviationAdditive(5,10);
+
+                auto playerPosition = std::find_if(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), [](const GameUtils::Object& obj){
+                        return obj.GetType() == GameUtils::ObjectType::PLAYER;
+                    })->GetSprite().getPosition();
+                auto ticks = static_cast<int>((playerPosition.y - currentPosition.y)/projectileVelocityBossY);
+                auto projectileVelX = static_cast<int>(std::ceil((playerPosition.x - currentPosition.x)/ticks));
+
+                obj.GetAuxiliarVars()["Direction"] = projectileVelX;
+
+                if(std::abs(static_cast<int>(playerPosition.y - currentPosition.y)) <= (obj.GetAuxiliarVars()["maximumSpacement"]/7))
+                {
+                    obj.GetAuxiliarVars()["Direction"] = 0;
+
+                }
+
+                obj.GetSprite().setPosition(currentPosition.x + obj.GetAuxiliarVars()["Direction"], currentPosition.y + projectileVelocityBossY);
+            }
+        }
+        else 
+        {
+            DestroyObject(obj);
+            return;
+        }
+
+        ObjectCollison(obj, {GameUtils::ObjectType::PLAYER}, GameUtils::SoundName::ENEMY_DEATH, 0);
     }
 
     std::vector<GameUtils::Object> LogicFunctions::GetAllObjectByTypes(const std::vector<GameUtils::ObjectType>& types)
@@ -208,24 +311,24 @@ namespace GameEngine
         m_gameThread->GetObjects().erase(std::find(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), obj));
     }
 
-    bool LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const std::pair<GameUtils::ObjectType, int>& logicAssist, const GameUtils::SoundName& soundName, const int& textureRow)
+    bool LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const GameUtils::SoundName& soundName, const int& textureRow)
     {
-        auto currentPosition = obj.GetSprite().getPosition();
+        auto currentPosition = sf::Vector2i(obj.GetSprite().getPosition()) + obj.GetHitBox().getPosition();
         auto enemyObjs = GetAllObjectByTypes(objTypes);
-        if(enemyObjs.size() > 0 && m_logicAssists[logicAssist].auxVariables[1] == 0)
+        if(enemyObjs.size() > 0)
         {
             for(auto index = 0; index < enemyObjs.size(); ++index)
             {
-                auto enemyPosition = enemyObjs[index].GetSprite().getPosition();
+                auto enemyPosition = sf::Vector2i(enemyObjs[index].GetSprite().getPosition()) + enemyObjs[index].GetHitBox().getPosition();
                 auto dx = (int)std::abs(currentPosition.x - enemyPosition.x);
                 auto dy = (int)std::abs(currentPosition.y - enemyPosition.y);
-                auto r = (int)enemyObjs[index].GetSprite().getTextureRect().getSize().x;
+                auto r = enemyObjs[index].GetHitBox().getSize().x;
 
 
                 if(!obj.GetDestroyOnFinish() && (std::pow(dx,2) + std::pow(dy, 2) <= std::pow(r, 2))) 
                 {
                     obj.GetAuxiliarVars()["pinMovement"] = 1;
-                    obj.SetupAnimatedAction(textureRow, false, true, [this, &obj] {
+                    obj.SetupAnimatedAction(textureRow, false, true, false, 0, [this, &obj] {
                         obj.GetAuxiliarVars()["pinMovement"] = 0;
                     });
 
@@ -234,8 +337,7 @@ namespace GameEngine
                     objRef.SetHitPoints(objRef.GetHitPoints() - 1);
                     if(objRef.GetHitPoints() <= 0)
                     {
-                        objRef.SetHitPoints(999);
-                        objRef.SetupAnimatedAction(textureRow, false, true, [this, objTypes, objRef]() {
+                        objRef.SetupAnimatedAction(textureRow, false, true, false, 0, [this, objTypes, objRef]() {
                             for(auto objType : objTypes)
                                 if(objType == GameUtils::ObjectType::ENEMY)
                                     m_gameThread->SetScore(++m_gameThread->GetScore());

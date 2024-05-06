@@ -15,13 +15,16 @@ using namespace std::chrono_literals;
 
 namespace GameUtils
 {
+
     enum class ObjectType : int
     {
-        PLAYER = 0,
+        UNKNOWN = 0,
+        PLAYER,
         PROJECTILE,
         ENEMY,
         ENEMY_PROJECTILE,
-        BOSS
+        BOSS,
+        BOSS_PROJECTILE
     };
 
     static std::string ObjectTypeToString(const ObjectType& type) 
@@ -33,6 +36,7 @@ namespace GameUtils
             case ObjectType::ENEMY: return "Enemy";
             case ObjectType::ENEMY_PROJECTILE: return "Enemy Projectile";
             case ObjectType::BOSS: return "Boss";
+            case ObjectType::BOSS_PROJECTILE: return "Boss Projectile";
             default: return "";
         }
     }
@@ -72,13 +76,14 @@ namespace GameUtils
         void SetHitPoints(const int& value);
         bool GetAnimRunning();
         void StepLogic();
-        void SetupAnimatedAction(const int& textureRow, const bool& isLoop, const bool& destroyOnFinish = false, const std::function<void()>& destroyAction = []{});
+        void SetupAnimatedAction(const int& textureRow, const bool& isLoop, const bool& destroyOnFinish = false, const bool& onFinishRollback = false, const int& rollbackTextureRow = 0, const std::function<void()>& destroyAction = []{});
         void DoAnimatedAction();
         void StopAnimatedAction();
         bool GetDestroy();
         bool GetDestroyOnFinish();
+        sf::IntRect GetHitBox();
         std::map<std::string, int>& GetAuxiliarVars();
-        std::chrono::time_point<std::chrono::steady_clock>& GetAuxiliarTimeStamp();
+        std::map<std::string, std::chrono::time_point<std::chrono::steady_clock>>& GetAuxiliarTimeStamp();
 
     private:
         std::string m_id;
@@ -94,8 +99,9 @@ namespace GameUtils
         std::shared_ptr<std::tuple<std::chrono::milliseconds, std::chrono::steady_clock::time_point, bool>> m_timer;
         int m_hitPoints;
         std::map<std::string, int> m_auxiliarVariables;
-        std::chrono::time_point<std::chrono::steady_clock> m_auxiliarTimestamp;
+        std::map<std::string, std::chrono::time_point<std::chrono::steady_clock>> m_auxiliarTimestamps;
         int m_scorePoint;
+        sf::IntRect m_hitBox;
 
 
         //TODO Animation class?
@@ -108,11 +114,13 @@ namespace GameUtils
         unsigned int m_animationHead;
         unsigned int m_animationStep;
         std::chrono::_V2::steady_clock::time_point m_animationStartTime;
-        int m_textureRow; 
+        int m_textureRow;
+        int m_previousTextureRow;
         bool m_isLoop;
         bool m_destroyOnFinish;
         bool m_destroy;
         std::function<void()> m_destroyAction;
+        bool m_onFinishRollback;
         // --------------------------------
     };
 }
