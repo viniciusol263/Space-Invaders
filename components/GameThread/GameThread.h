@@ -60,7 +60,9 @@ namespace GameEngine
 
         std::chrono::time_point<std::chrono::steady_clock> m_lastFrameTime;
 
-        void InitializeState(const bool& respawn = false) override;
+        void InitializeState() override;
+        void RenderStage() override;
+        void MenuScreen() override;
         void CaptureKeyInput() override;
         void PauseLogic() override;
         void ExecuteLogic() override;
@@ -68,6 +70,7 @@ namespace GameEngine
         void ClearScreen() override;
         void ProgressionCheck() override;
         void CleanupGame() override;
+        void RenderText() override;
 
         void GenerateSoundChannels();
         void CreateArrayObject(const int& rows, const int& columns, const std::function<GameUtils::Object(sf::Vector2i, std::string)>& objectBuilder);

@@ -17,6 +17,9 @@ namespace GameEngine
     {
         m_logicFunction = std::make_shared<LogicFunctions>(std::shared_ptr<GameThread>(this));
         InitializeState();
+        MenuScreen(); 
+        RenderText();
+        RenderStage();
         ClearScreen();
 
         m_lastFrameTime = std::chrono::steady_clock::now();
@@ -92,24 +95,24 @@ namespace GameEngine
         m_textSprites[GameUtils::TextType::HIGH_SCORE].setString("Highscore: " + std::to_string(m_highscore));
     }
 
-    void GameThread::InitializeState(const bool& respawn)
+    void GameThread::InitializeState()
     {
-
-        auto windowSize = m_window->getDefaultView().getSize();
-        m_progression = GameUtils::Progression::NORMAL_GAME;
         m_font.loadFromFile("../resources/fonts/PressStart2P-vaV7.ttf");
-        m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
-        m_textSprites[GameUtils::TextType::HIGH_SCORE] = {"Highscore: " + std::to_string(m_highscore), m_font, 24};
-        m_textSprites[GameUtils::TextType::HIGH_SCORE].setPosition({m_window->getDefaultView().getCenter().x - ((std::string("Highscore: ").size()/2)*m_textSprites[GameUtils::TextType::HIGH_SCORE].getCharacterSize()),m_textSprites[GameUtils::TextType::HIGH_SCORE].getPosition().y});
+
+        GenerateSoundChannels();
+
+        for(auto& key : GameUtils::Keyboard_Keys)
+            m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
+    }
+
+    void GameThread::RenderStage()
+    {
+        if(m_progression == GameUtils::Progression::MENU) return;
+        m_progression = GameUtils::Progression::NORMAL_GAME;
+
+        RenderText();
+        auto windowSize = m_window->getDefaultView().getSize();
   
-        if(!respawn)
-        {
-            GenerateSoundChannels();
-
-            for(auto& key : GameUtils::Keyboard_Keys)
-                m_keyMaps[key] = std::make_shared<GameUtils::Input>(key);
-        }
-
         //Putting Player ship on the rendering pipeline
         CreateObject("0",GameUtils::ObjectType::PLAYER, "../resources/texture/multi-anim-ship.png", "",
             std::bind(&LogicFunctions::PlayerStartup, m_logicFunction, std::placeholders::_1, sf::Vector2i{(int)(windowSize.x/2), (int)(windowSize.y * 0.9)}),
@@ -125,9 +128,27 @@ namespace GameEngine
                         std::bind(&LogicFunctions::EnemyLogic, m_logicFunction, std::placeholders::_1), 200ms, 1, 1, true);
             }
         );
-
     }
 
+    void GameThread::MenuScreen()
+    {
+        std::string menuTitleString = "SPACE INVADERS";
+        auto menuTitleSize = 50;
+        m_textSprites[GameUtils::TextType::MENU_TITLE] = {menuTitleString, m_font, menuTitleSize};
+        m_textSprites[GameUtils::TextType::MENU_TITLE].setPosition({m_window->getDefaultView().getCenter().x - (menuTitleString.size()/2)*menuTitleSize, m_window->getDefaultView().getCenter().y/2});
+        m_textSprites[GameUtils::TextType::MENU_TITLE].setFillColor(sf::Color(GameUtils::red));
+
+        std::string menuStartString = "PRESS ENTER TO START";
+        auto menuStartSize = 24;
+        m_textSprites[GameUtils::TextType::MENU_START] = {menuStartString, m_font, menuStartSize};
+        m_textSprites[GameUtils::TextType::MENU_START].setPosition({m_window->getDefaultView().getCenter().x - (menuStartString.size()/2)*menuStartSize, 3*m_window->getDefaultView().getCenter().y/2});
+        m_textSprites[GameUtils::TextType::MENU_START].setFillColor(sf::Color(GameUtils::red));
+
+        m_progression = GameUtils::Progression::MENU;
+        // m_textSprites.erase(GameUtils::TextType::MENU_TITLE);
+        // m_textSprites.erase(GameUtils::TextType::MENU_START);
+    }
+    
     void GameThread::DrawSprites()
     {
         for(auto& sprite : m_objects)
@@ -167,7 +188,19 @@ namespace GameEngine
                 {
                     m_score = 0;
                     CleanupGame();
-                    InitializeState(true);
+                    RenderStage();
+                    break;
+                }
+            }
+        }
+        if(m_progression == GameUtils::Progression::MENU)
+        {
+            for(auto& [scancode, key] : m_keyMaps)
+            {
+                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Enter)
+                {
+                    m_score = 0;
+                    m_progression = GameUtils::Progression::NORMAL_GAME;
                     break;
                 }
             }
@@ -189,6 +222,7 @@ namespace GameEngine
 
     void GameThread::ExecuteLogic()
     {
+        if(m_paused == 2) return;
         for(auto index = 0; index < m_objects.size(); ++index)
         {
             if(m_objects[index].GetDestroy())
@@ -221,7 +255,7 @@ namespace GameEngine
                 PlayAudioChannel(GameUtils::SoundName::WIN);
                 m_progression = GameUtils::Progression::RESPAWN;
                 CleanupGame();
-                InitializeState(true);
+                RenderStage();
             }
 
             else if(m_progression == GameUtils::Progression::NORMAL_GAME)
@@ -233,7 +267,7 @@ namespace GameEngine
             }
 
         }
-        if(playerLive == 0)
+        if(m_progression != GameUtils::Progression::MENU && playerLive == 0)
         {
             if(m_paused != 2)
                 PlayAudioChannel(GameUtils::SoundName::LOSE);
@@ -252,6 +286,15 @@ namespace GameEngine
         m_textSprites.clear();
     }
 
+    void GameThread::RenderText()
+    {   
+        if(m_progression == GameUtils::Progression::MENU) return;
+        auto windowSize = m_window->getDefaultView().getSize();
+        m_textSprites[GameUtils::TextType::SCORE] = {"Score: " + std::to_string(m_score), m_font, 24};
+        m_textSprites[GameUtils::TextType::HIGH_SCORE] = {"Highscore: " + std::to_string(m_highscore), m_font, 24};
+        m_textSprites[GameUtils::TextType::HIGH_SCORE].setPosition({m_window->getDefaultView().getCenter().x - ((std::string("Highscore: ").size()/2)*m_textSprites[GameUtils::TextType::HIGH_SCORE].getCharacterSize()),
+                                                                    m_textSprites[GameUtils::TextType::HIGH_SCORE].getPosition().y});
+    }
 
     void GameThread::GenerateSoundChannels()
     {    
@@ -320,31 +363,17 @@ namespace GameEngine
     {
         while(m_window->isOpen())
         {
-
             if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= GameUtils::globalFrametime)
             {
+                m_lastFrameTime = std::chrono::steady_clock::now();
                 ProgressionCheck();
                 ClearScreen();
                 CaptureKeyInput();
                 PauseLogic();
-                if(m_paused != 2)
-                {
-                    ExecuteLogic();
-                }
+                ExecuteLogic();
                 DrawSprites();
                 m_window->display(); 
-                m_lastFrameTime = std::chrono::steady_clock::now();
-                
             }
-            for(auto index = 0; index < m_objects.size(); ++index)
-            {
-                if(m_objects[index].GetDestroy())
-                {
-                    m_objects.erase(m_objects.begin() + index);
-                    break;
-                }
-            }
-
         }
     }
 

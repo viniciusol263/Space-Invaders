@@ -45,7 +45,7 @@ namespace GameEngine
     void LogicFunctions::EnemyStartup(GameUtils::Object& obj, const sf::Vector2i& initialPos)
     {
         auto colorSeparator = stoi(obj.GetId()) / GameUtils::enemyQuantity[0];
-        std::vector<uint32_t> colors({0xAC3232FF,0x822929FF});
+        std::vector<uint32_t> colors({GameUtils::red, GameUtils::darkerRed});
         PixelColorSwap(*obj.GetTexture(), colors, -1, colorSeparator);
 
         obj.GetAuxiliarVars()["movementCounter"] = 0; // Orientation X-Axis counter
@@ -311,7 +311,7 @@ namespace GameEngine
         m_gameThread->GetObjects().erase(std::find(m_gameThread->GetObjects().begin(), m_gameThread->GetObjects().end(), obj));
     }
 
-    bool LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const GameUtils::SoundName& soundName, const int& textureRow)
+    void LogicFunctions::ObjectCollison(GameUtils::Object& obj, const std::vector<GameUtils::ObjectType>& objTypes, const GameUtils::SoundName& soundName, const int& textureRow)
     {
         auto currentPosition = sf::Vector2i(obj.GetSprite().getPosition()) + obj.GetHitBox().getPosition();
         auto enemyObjs = GetAllObjectByTypes(objTypes);
@@ -343,11 +343,9 @@ namespace GameEngine
                                     m_gameThread->SetScore(++m_gameThread->GetScore());
                         });
                     }
-                    return true;
                 }   
             }
         }
-        return false;
     }
 
     void LogicFunctions::RandomShuffler(std::vector<int>& vector, int originalSize)

@@ -38,7 +38,9 @@ namespace GameEngine
 
         virtual void GameWatcherThread() = 0;
     private:
-        virtual void InitializeState(const bool& respawn = false) = 0;
+        virtual void InitializeState() = 0;
+        virtual void RenderStage() = 0;
+        virtual void MenuScreen() = 0;
         virtual void CaptureKeyInput() = 0;
         virtual void PauseLogic() = 0;
         virtual void ExecuteLogic() = 0;
@@ -46,6 +48,7 @@ namespace GameEngine
         virtual void ClearScreen() = 0;
         virtual void ProgressionCheck() = 0;
         virtual void CleanupGame() = 0;
+        virtual void RenderText() = 0;
 
 
     };
