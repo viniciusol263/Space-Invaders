@@ -145,8 +145,6 @@ namespace GameEngine
         m_textSprites[GameUtils::TextType::MENU_START].setFillColor(sf::Color(GameUtils::red));
 
         m_progression = GameUtils::Progression::MENU;
-        // m_textSprites.erase(GameUtils::TextType::MENU_TITLE);
-        // m_textSprites.erase(GameUtils::TextType::MENU_START);
     }
     
     void GameThread::DrawSprites()
@@ -180,7 +178,7 @@ namespace GameEngine
 
     void GameThread::PauseLogic()
     {
-        if(m_textSprites[GameUtils::TextType::PAUSE].getString() == "GAME OVER")
+        if(m_progression == GameUtils::Progression::GAME_OVER)
         {
             for(auto& [scancode, key] : m_keyMaps)
             {
@@ -201,6 +199,8 @@ namespace GameEngine
                 {
                     m_score = 0;
                     m_progression = GameUtils::Progression::NORMAL_GAME;
+                    CleanupGame();
+                    RenderStage();
                     break;
                 }
             }
@@ -216,13 +216,18 @@ namespace GameEngine
             if(m_paused == 2)
             {
                 BlockingTextScreen("PAUSED");
-            }    
+                m_progression = GameUtils::Progression::PAUSE;
+            }
+            else if(m_paused == 0)
+            {
+                m_progression = GameUtils::Progression::NORMAL_GAME;
+            }
         }
     }
 
     void GameThread::ExecuteLogic()
     {
-        if(m_paused == 2) return;
+        if(m_progression == GameUtils::Progression::PAUSE || m_progression == GameUtils::Progression::GAME_OVER) return;
         for(auto index = 0; index < m_objects.size(); ++index)
         {
             if(m_objects[index].GetDestroy())
@@ -269,18 +274,17 @@ namespace GameEngine
         }
         if(m_progression != GameUtils::Progression::MENU && playerLive == 0)
         {
-            if(m_paused != 2)
+            if(m_progression == GameUtils::Progression::NORMAL_GAME || m_progression == GameUtils::Progression::BOSS_PHASE)
                 PlayAudioChannel(GameUtils::SoundName::LOSE);
             m_progression = GameUtils::Progression::GAME_OVER;
             BlockingTextScreen("GAME OVER");
-            m_paused = 2;
         }
     }
 
 
     void GameThread::CleanupGame()
     {
-        m_paused = 0;
+        m_progression = GameUtils::Progression::NORMAL_GAME;
 
         m_objects.clear();
         m_textSprites.clear();
@@ -366,8 +370,8 @@ namespace GameEngine
             if(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - m_lastFrameTime) >= GameUtils::globalFrametime)
             {
                 m_lastFrameTime = std::chrono::steady_clock::now();
-                ProgressionCheck();
                 ClearScreen();
+                ProgressionCheck();
                 CaptureKeyInput();
                 PauseLogic();
                 ExecuteLogic();
