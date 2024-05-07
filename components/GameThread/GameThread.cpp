@@ -178,34 +178,24 @@ namespace GameEngine
 
     void GameThread::PauseLogic()
     {
-        if(m_progression == GameUtils::Progression::GAME_OVER)
+        if(m_keyMaps[sf::Keyboard::Scancode::Enter] != nullptr && m_keyMaps[sf::Keyboard::Scancode::Enter]->GetPressed())
         {
-            for(auto& [scancode, key] : m_keyMaps)
+            if(m_progression == GameUtils::Progression::GAME_OVER)
             {
-                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Enter)
-                {
-                    m_score = 0;
-                    CleanupGame();
-                    RenderStage();
-                    break;
-                }
+                m_score = 0;
+                CleanupGame();
+                RenderStage();
+            }
+            else if(m_progression == GameUtils::Progression::MENU)
+            {
+                m_score = 0;
+                m_progression = GameUtils::Progression::NORMAL_GAME;
+                CleanupGame();
+                RenderStage();
             }
         }
-        if(m_progression == GameUtils::Progression::MENU)
-        {
-            for(auto& [scancode, key] : m_keyMaps)
-            {
-                if(key != nullptr && key->GetPressed() && scancode == sf::Keyboard::Scancode::Enter)
-                {
-                    m_score = 0;
-                    m_progression = GameUtils::Progression::NORMAL_GAME;
-                    CleanupGame();
-                    RenderStage();
-                    break;
-                }
-            }
-        }
-        else if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
+        
+        if((m_paused == 0 || m_paused == 2) && m_keyMaps[sf::Keyboard::Scancode::P]->GetPressed())
         {
             m_paused = (m_paused + 1) % 4;
             m_textSprites.erase(GameUtils::TextType::PAUSE);
