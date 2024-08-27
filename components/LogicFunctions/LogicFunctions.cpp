@@ -22,8 +22,10 @@ namespace GameEngine
     void LogicFunctions::PlayerLogic(GameUtils::Object& obj)
     {
         //Horizontal Movement
-        auto left = (m_gameThread->GetKeys()[sf::Keyboard::Scancode::A]->GetPressed()) ? -1 : 0;
-        auto right = (m_gameThread->GetKeys()[sf::Keyboard::Scancode::D]->GetPressed()) ? 1 : 0;
+        auto left = (m_gameThread->GetKeys()[sf::Keyboard::Scancode::A]->GetPressed() 
+                    || m_gameThread->GetKeys()[sf::Keyboard::Scancode::Left]->GetPressed()) ? -1 : 0;
+        auto right = (m_gameThread->GetKeys()[sf::Keyboard::Scancode::D]->GetPressed()
+                    || m_gameThread->GetKeys()[sf::Keyboard::Scancode::Right]->GetPressed() ) ? 1 : 0;
         auto projectile = m_gameThread->GetKeys()[sf::Keyboard::Scancode::Space]->GetPressed();
 
         auto nextPosition = obj.GetSprite().getPosition().x + ((left + right) * playerShipVelocityX);
